@@ -14,7 +14,6 @@ KCM.SimpleKCM {
             from: 1
             to: 120
             id: kcfg_focusTime
-            value: 25
         }
     
         QQC2.SpinBox {
@@ -22,7 +21,6 @@ KCM.SimpleKCM {
             from: 1
             to: 60
             id: kcfg_shortBreakTime
-            value: 5
         }
     
         QQC2.SpinBox {
@@ -30,7 +28,6 @@ KCM.SimpleKCM {
             from: 1
             to: 120
             id: kcfg_longBreakTime
-            value: 15
         }
     
         QQC2.SpinBox {
