@@ -86,6 +86,15 @@ PlasmoidItem {
         }
     }
 
+    function getTaskStats() {
+        let done = 0;
+        let total = taskModel.count;
+        for (let i = 0; i < total; i++) {
+            if (taskModel.get(i).done) done++;
+        }
+        return "(" + done + "/" + total + ")";
+    }
+
     Timer {
         id: mainTimer
         interval: 1000
@@ -212,6 +221,7 @@ PlasmoidItem {
             // --- TIMER SECTION ---
             Item {
                 Layout.alignment: Qt.AlignHCenter
+                Layout.topMargin: Kirigami.Units.gridUnit * 1.5
                 Layout.preferredWidth: Kirigami.Units.gridUnit * 12
                 Layout.preferredHeight: Kirigami.Units.gridUnit * 12
 
@@ -399,12 +409,60 @@ PlasmoidItem {
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                Layout.topMargin: Kirigami.Units.gridUnit * 1.5
                 spacing: Kirigami.Units.smallSpacing
 
-                PlasmaExtras.Heading {
-                    text: i18n("Tasks")
-                    level: 4
-                    font.weight: Font.Bold
+                // Header
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.bottomMargin: Kirigami.Units.smallSpacing
+                    
+                    PlasmaComponents.Label {
+                        text: i18n("To-Do-List")
+                        font.pixelSize: Kirigami.Units.gridUnit * 0.9
+                        font.weight: Font.Bold
+                    }
+                    
+                    PlasmaComponents.Label {
+                        text: getTaskStats()
+                        font.pixelSize: Kirigami.Units.gridUnit * 0.75
+                        opacity: 0.6
+                        Layout.leftMargin: Kirigami.Units.smallSpacing
+                    }
+                    
+                    Item { Layout.fillWidth: true } // Spacer
+                    
+                    // Presets Button
+                    Rectangle {
+                        implicitWidth: presetLabel.width + Kirigami.Units.gridUnit * 0.8
+                        implicitHeight: Kirigami.Units.gridUnit * 1.1
+                        radius: height / 2
+                        color: "transparent"
+                        border.color: Kirigami.Theme.textColor
+                        border.width: 1
+                        opacity: 0.8
+                        
+                        PlasmaComponents.Label {
+                            id: presetLabel
+                            anchors.centerIn: parent
+                            text: i18n("Presets")
+                            font.pixelSize: Kirigami.Units.gridUnit * 0.65
+                        }
+                        
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: console.log("Presets clicked")
+                        }
+                    }
+                }
+
+                // Header Separator
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 1
+                    color: Kirigami.Theme.textColor
+                    opacity: 0.2
                 }
 
                 ListView {
@@ -412,74 +470,203 @@ PlasmoidItem {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true
-                    spacing: 2
+                    spacing: Kirigami.Units.smallSpacing
                     
                     model: ListModel {
                         id: taskModel
-                        ListElement { taskName: "Focus on work"; done: false }
+                        ListElement { taskName: "Reading \"Busy Doing Nothing\""; done: false }
+                        ListElement { taskName: "Taking Notes"; done: false }
+                        ListElement { taskName: "Make Presentation"; done: false }
                     }
 
-                    delegate: MouseArea {
+                    delegate: Item {
                         id: taskDelegate
                         width: taskList.width
-                        height: checkDelegate.height
-                        hoverEnabled: true
+                        height: Math.max(checkDelegate.height, Kirigami.Units.gridUnit * 2)
+                        
+                        property bool isHovered: mouseArea.containsMouse
 
-                        PlasmaComponents.CheckBox {
-                            id: checkDelegate
+                        RowLayout {
                             anchors.fill: parent
-                            text: model.taskName
-                            checked: model.done
-                            onToggled: model.done = checked
+                            spacing: Kirigami.Units.smallSpacing
                             
-                            contentItem: PlasmaComponents.Label {
-                                text: parent.text
-                                font.strikeout: parent.checked
-                                opacity: parent.checked ? 0.5 : 1.0
+                            // Grab handle
+                            PlasmaComponents.Label {
+                                text: "⣿"
+                                font.pixelSize: Kirigami.Units.gridUnit * 0.8
+                                opacity: 0.3
+                                Layout.alignment: Qt.AlignVCenter
+                            }
+                            
+                            PlasmaComponents.CheckBox {
+                                id: checkDelegate
+                                checked: model.done
+                                onToggled: model.done = checked
+                                
+                                Layout.alignment: Qt.AlignVCenter
+                                
+                                indicator: Rectangle {
+                                    implicitWidth: Kirigami.Units.gridUnit * 0.9
+                                    implicitHeight: Kirigami.Units.gridUnit * 0.9
+                                    radius: 3
+                                    color: "transparent"
+                                    border.color: Kirigami.Theme.textColor
+                                    border.width: 1
+                                    opacity: checkDelegate.checked ? 0.8 : 0.3
+
+                                    Kirigami.Icon {
+                                        anchors.centerIn: parent
+                                        width: parent.width * 0.8
+                                        height: width
+                                        source: "checkmark"
+                                        visible: checkDelegate.checked
+                                        color: Kirigami.Theme.highlightColor
+                                    }
+                                }
+                            }
+
+                            PlasmaComponents.Label {
+                                id: taskLabel
+                                Layout.fillWidth: true
+                                text: model.taskName
+                                font.pixelSize: Kirigami.Units.gridUnit * 0.7
+                                font.strikeout: model.done
+                                opacity: model.done ? 0.5 : 1.0
                                 verticalAlignment: Text.AlignVCenter
-                                leftPadding: parent.indicator.width + parent.spacing
+                                wrapMode: Text.WordWrap
                                 Behavior on opacity { NumberAnimation { duration: 250 } }
                             }
+
+                            Kirigami.Icon {
+                                source: "window-close-symbolic"
+                                implicitWidth: Kirigami.Units.gridUnit * 1.0
+                                implicitHeight: Kirigami.Units.gridUnit * 1.0
+                                visible: taskDelegate.isHovered
+                                opacity: 0.5
+                                
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: taskModel.remove(index)
+                                }
+                            }
+                        }
+
+                        MouseArea {
+                            id: mouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: checkDelegate.toggle()
+                            z: -1
                         }
 
                         Rectangle {
                             anchors.fill: parent
                             color: Kirigami.Theme.highlightColor
-                            opacity: taskDelegate.containsMouse ? 0.1 : 0
-                            z: -1
+                            opacity: taskDelegate.isHovered ? 0.05 : 0
+                            z: -2
                             Behavior on opacity { NumberAnimation { duration: 150 } }
-                        }
-
-                        PlasmaComponents.Button {
-                            anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
-                            visible: taskDelegate.containsMouse
-                            icon.name: "edit-delete"
-                            onClicked: taskModel.remove(index)
-                            flat: true
                         }
                     }
                 }
 
-                // Add Task Row
+                // Footer Separator with Handle
+                Item {
+                    Layout.fillWidth: true
+                    implicitHeight: Kirigami.Units.gridUnit * 1.5
+                    
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: parent.width
+                        height: 1
+                        color: Kirigami.Theme.textColor
+                        opacity: 0.2
+                    }
+                    
+                    // The '=' handle in the middle
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: Kirigami.Units.gridUnit * 1.5
+                        height: Kirigami.Units.gridUnit * 0.6
+                        color: Kirigami.Theme.backgroundColor
+                        
+                        PlasmaComponents.Label {
+                            anchors.centerIn: parent
+                            text: "="
+                            font.bold: true
+                            opacity: 0.4
+                        }
+                    }
+                }
+
+                // Footer Actions
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: Kirigami.Units.smallSpacing
-
-                    PlasmaComponents.TextField {
-                        id: newTaskInput
-                        Layout.fillWidth: true
-                        placeholderText: i18n("Add a task...")
-                        onAccepted: addTaskBtn.clicked()
+                    spacing: Kirigami.Units.gridUnit
+                    
+                    RowLayout {
+                        spacing: Kirigami.Units.smallSpacing
+                        opacity: 0.7
+                        
+                        Kirigami.Icon {
+                            source: "list-add"
+                            implicitWidth: Kirigami.Units.gridUnit * 1.0
+                            implicitHeight: Kirigami.Units.gridUnit * 1.0
+                        }
+                        
+                        PlasmaComponents.Label {
+                            text: i18n("New Task")
+                            font.pixelSize: Kirigami.Units.gridUnit * 0.7
+                        }
+                        
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                taskModel.append({ taskName: i18n("New Task"), done: false });
+                            }
+                        }
                     }
-
-                    PlasmaComponents.Button {
-                        id: addTaskBtn
-                        icon.name: "list-add"
-                        onClicked: {
-                            if (newTaskInput.text.trim() !== "") {
-                                taskModel.append({ taskName: newTaskInput.text, done: false });
-                                newTaskInput.text = "";
+                    
+                    RowLayout {
+                        spacing: Kirigami.Units.smallSpacing
+                        opacity: 0.7
+                        
+                        Kirigami.Icon {
+                            source: "list-add"
+                            implicitWidth: Kirigami.Units.gridUnit * 1.0
+                            implicitHeight: Kirigami.Units.gridUnit * 1.0
+                        }
+                        
+                        PlasmaComponents.Label {
+                            text: i18n("New Group")
+                            font.pixelSize: Kirigami.Units.gridUnit * 0.7
+                        }
+                        
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: console.log("New Group clicked")
+                        }
+                    }
+                    
+                    Item { Layout.fillWidth: true } // Spacer
+                    
+                    // Trash Icon
+                    Kirigami.Icon {
+                        source: "user-trash"
+                        implicitWidth: Kirigami.Units.gridUnit * 1.2
+                        implicitHeight: Kirigami.Units.gridUnit * 1.2
+                        opacity: 0.7
+                        
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                // Clear completed tasks example
+                                for (let i = taskModel.count - 1; i >= 0; i--) {
+                                    if (taskModel.get(i).done) taskModel.remove(i);
+                                }
                             }
                         }
                     }
