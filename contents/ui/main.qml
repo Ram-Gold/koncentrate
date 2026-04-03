@@ -477,6 +477,15 @@ PlasmoidItem {
                     Layout.fillHeight: true
                     clip: true
                     spacing: Kirigami.Units.smallSpacing
+                    interactive: false
+                    
+                    QQC2.ScrollBar.vertical: QQC2.ScrollBar {
+                        width: Kirigami.Units.gridUnit * 0.5
+                        policy: QQC2.ScrollBar.AsNeeded
+                    }
+                    
+                    property int draggingIndex: -1
+                    property int targetIndex: -1
                     
                     model: ListModel {
                         id: taskModel
@@ -485,9 +494,25 @@ PlasmoidItem {
                     delegate: Item {
                         id: taskDelegate
                         width: taskList.width
-                        height: Math.max(checkDelegate.height, Kirigami.Units.gridUnit * 2)
+                        height: Math.max(checkDelegate.height, Kirigami.Units.gridUnit * 2) + dropIndicator.height
                         
                         property bool isHovered: mouseArea.containsMouse
+                        property bool isDragging: taskList.draggingIndex === index
+                        opacity: isDragging ? 0.5 : 1.0
+                        Behavior on opacity { NumberAnimation { duration: 200 } }
+                        
+                        // Drop Indicator Line
+                        Rectangle {
+                            id: dropIndicator
+                            width: parent.width
+                            height: (taskList.draggingIndex !== -1 && taskList.targetIndex === index) ? 2 : 0
+                            color: root.phaseColor
+                            anchors.top: parent.top
+                            visible: height > 0
+                            z: 5
+                            
+                            Behavior on height { NumberAnimation { duration: 150 } }
+                        }
 
                         RowLayout {
                             anchors.fill: parent
@@ -499,6 +524,33 @@ PlasmoidItem {
                                 font.pixelSize: Kirigami.Units.gridUnit * 0.8
                                 opacity: 0.3
                                 Layout.alignment: Qt.AlignVCenter
+                                
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    
+                                    onPressed: (mouse) => {
+                                        taskList.draggingIndex = index;
+                                    }
+                                    
+                                    onPositionChanged: (mouse) => {
+                                        if (taskList.draggingIndex !== -1) {
+                                            var pos = mapToItem(taskList, mouse.x, mouse.y);
+                                            var target = taskList.indexAt(pos.x, pos.y + taskList.contentY);
+                                            if (target !== -1) {
+                                                taskList.targetIndex = target;
+                                            }
+                                        }
+                                    }
+                                    
+                                    onReleased: (mouse) => {
+                                        if (taskList.draggingIndex !== -1 && taskList.targetIndex !== -1) {
+                                            taskModel.move(taskList.draggingIndex, taskList.targetIndex, 1);
+                                        }
+                                        taskList.draggingIndex = -1;
+                                        taskList.targetIndex = -1;
+                                    }
+                                }
                             }
                             
                             PlasmaComponents.CheckBox {
