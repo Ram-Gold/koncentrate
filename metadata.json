@@ -9,7 +9,7 @@
         ],
         "Category": "Utilities",
         "Description": "A unified Pomodoro timer and task list widget based on Fokus, built for Plasma 6.",
-        "Icon": "timer",
+        "Icon": "chronometer-symbolic",
         "Id": "ramgolds.koncentrate",
         "License": "GPL-3.0-or-later",
         "Name": "Koncentrate",
