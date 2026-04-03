@@ -6,6 +6,7 @@ import org.kde.plasma.components as PlasmaComponents
 import org.kde.plasma.extras as PlasmaExtras
 import org.kde.plasma.plasmoid
 import org.kde.kirigami as Kirigami
+import QtQuick.Shapes 1.0
 
 /**
  * Koncentrate: Unified Pomodoro & To-Do Widget
@@ -26,10 +27,13 @@ PlasmoidItem {
     property int initialSeconds: focusTime
     // @CONFIG_END
 
+    Kirigami.Theme.colorSet: Kirigami.Theme.Window
+    Kirigami.Theme.inherit: true
+
     property color phaseColor: {
-        if (stateVal === (numberOfSessions * 2)) return "#2196F3" // Blue (Long Break)
-        if (isBreak()) return "#4CAF50" // Green (Short Break)
-        return "#F44336" // Red (Pomodoro)
+        if (stateVal === (numberOfSessions * 2)) return Kirigami.Theme.neutralTextColor // Theme Neutral (Long Break)
+        if (isBreak()) return Kirigami.Theme.positiveTextColor // Theme Positive (Short Break)
+        return Kirigami.Theme.negativeTextColor // Theme Negative (Pomodoro/Focus)
     }
 
     // @MODEL: Task & Group Data
@@ -185,27 +189,56 @@ PlasmoidItem {
         id: compactRoot
         
         property bool isVertical: Plasmoid.formFactor === PlasmaCore.Types.Vertical
-        Layout.minimumWidth: Kirigami.Units.gridUnit * 3
+        Layout.minimumWidth: Kirigami.Units.gridUnit * 1.5
         Layout.minimumHeight: Kirigami.Units.gridUnit * 1.5
 
         onClicked: root.expanded = !root.expanded
 
         RowLayout {
             anchors.centerIn: parent
-            spacing: Kirigami.Units.smallSpacing
+            spacing: 0
 
-            Kirigami.Icon {
-                source: "timer"
-                implicitWidth: Kirigami.Units.iconSizes.smallMedium
-                implicitHeight: Kirigami.Units.iconSizes.smallMedium
-                color: root.phaseColor
-            }
+            // Dynamic Pie Timer Icon
+            Item {
+                implicitWidth: Kirigami.Units.iconSizes.small
+                implicitHeight: Kirigami.Units.iconSizes.small
+                Layout.alignment: Qt.AlignVCenter
 
-            PlasmaComponents.Label {
-                text: formatTime(counterSeconds)
-                font.family: "Monospace"
-                font.weight: Font.DemiBold
-                visible: !compactRoot.isVertical || parent.width > Kirigami.Units.gridUnit * 4
+                // Circular Progress (Pie Timer)
+                Shape {
+                    anchors.fill: parent
+                    layer.enabled: true
+                    layer.samples: 4
+                    visible: root.counterSeconds > 0
+
+                    ShapePath {
+                        fillColor: root.phaseColor
+                        strokeColor: "transparent"
+                        
+                        PathAngleArc {
+                            centerX: Kirigami.Units.iconSizes.small / 2
+                            centerY: Kirigami.Units.iconSizes.small / 2
+                            radiusX: Kirigami.Units.iconSizes.small / 2
+                            radiusY: Kirigami.Units.iconSizes.small / 2
+                            startAngle: -90
+                            sweepAngle: 360 * (root.counterSeconds / root.initialSeconds)
+                        }
+                        PathLine {
+                            x: Kirigami.Units.iconSizes.small / 2
+                            y: Kirigami.Units.iconSizes.small / 2
+                        }
+                    }
+                }
+
+                // Overlay Clock Icon (Reduced Opacity)
+                Kirigami.Icon {
+                    anchors.centerIn: parent
+                    source: "chronometer-symbolic"
+                    implicitWidth: parent.width * 0.7
+                    implicitHeight: parent.height * 0.7
+                    color: Kirigami.Theme.highlightedTextColor
+                    opacity: 0.5
+                }
             }
         }
     }
@@ -217,11 +250,6 @@ PlasmoidItem {
         Layout.preferredWidth: Kirigami.Units.gridUnit * 16
         Layout.preferredHeight: Kirigami.Units.gridUnit * 25
         Layout.minimumWidth: Kirigami.Units.gridUnit * 12
-        Layout.minimumHeight: Kirigami.Units.gridUnit * 22
-
-        // @UI_STYLING: Theme-aware aesthetics and Progress visualization
-        Kirigami.Theme.colorSet: Kirigami.Theme.Window
-        Kirigami.Theme.inherit: true
 
         ColumnLayout {
             anchors.fill: parent
@@ -557,7 +585,7 @@ PlasmoidItem {
                         id: taskDelegate
                         width: taskList.width
                         property bool hiddenByGroup: model.isSubTask && root.isParentCollapsed(index)
-                        height: hiddenByGroup ? 0 : (Kirigami.Units.gridUnit * 1.6 + dropIndicator.height)
+                        height: hiddenByGroup ? 0 : (Kirigami.Units.gridUnit * 1.9 + dropIndicator.height)
                         visible: height > 0
                         clip: true
                         
@@ -785,7 +813,7 @@ PlasmoidItem {
                                 Layout.fillWidth: true
                                 visible: !model.isEditing
                                 text: model.taskName
-                                font.pixelSize: Kirigami.Units.gridUnit * 0.7
+                                font.pixelSize: Kirigami.Units.gridUnit * 0.8
                                 font.weight: isGroup ? Font.Bold : Font.Normal
                                 font.strikeout: !isGroup && model.done
                                 opacity: (!isGroup && model.done) ? 0.5 : 1.0
