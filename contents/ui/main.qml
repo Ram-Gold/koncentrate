@@ -641,11 +641,19 @@ PlasmoidItem {
                         property bool isHovered: mouseArea.containsMouse
                         property bool isDragging: taskList.draggingIndex === index
                         property bool isGroup: model.type === "group"
-                        property int _refresh: taskList.modelUpdateTrigger // Force re-evaluation on model changes
-                        // Sub-tasks ALWAYS connect up (to header or sibling)
+                        property int _refresh: taskList.modelUpdateTrigger
+                        // Simple: sub-task = joined to group above
                         property bool connectsToPrev: (_refresh >= 0) && model.isSubTask
-                        // Connect down only IF the next item is a sub-task
-                        property bool connectsToNext: (_refresh >= 0) && ((isGroup && !model.isCollapsed && index < taskModel.count - 1 && taskModel.get(index + 1).isSubTask) || (model.isSubTask && index < taskModel.count - 1 && taskModel.get(index + 1).isSubTask))
+                        // Simple: connects down if next item is a sub-task (and this is group header or also sub-task)
+                        property bool connectsToNext: {
+                            void(_refresh);
+                            if (index >= taskModel.count - 1) return false;
+                            var next = taskModel.get(index + 1);
+                            if (!next || !next.isSubTask) return false;
+                            if (isGroup && !model.isCollapsed) return true;
+                            if (model.isSubTask) return true;
+                            return false;
+                        }
                         
                         opacity: isDragging ? 0.5 : (hiddenByGroup ? 0 : 1.0)
                         Behavior on opacity { NumberAnimation { duration: 250 } }
@@ -794,36 +802,18 @@ PlasmoidItem {
                                             let dragIdx = taskList.draggingIndex;
                                             
                                             if (taskList.dropMode === 3 && taskList.hoveredGroupIndex !== -1) {
-                                                // Nest into group
+                                                // Explicitly nested into a group center
                                                 taskModel.setProperty(dragIdx, "isSubTask", true);
                                                 taskModel.move(dragIdx, taskList.hoveredGroupIndex + 1, 1);
                                             } else if (taskList.targetIndex !== -1) {
                                                 let targetIdx = taskList.targetIndex;
                                                 let finalDest = (taskList.dropMode === 2) ? targetIdx + 1 : targetIdx;
-                                                
-                                                // Handle self-move offset
                                                 if (dragIdx < finalDest) finalDest -= 1;
                                                 
+                                                // Simple rule: moving via top/bottom always flattens
                                                 var draggedItem = taskModel.get(dragIdx);
                                                 if (draggedItem.type === "task") {
-                                                    // Determine auto-indent based on the item we are landing AFTER
-                                                    var checkIdx = -1;
-                                                    if (taskList.dropMode === 2) checkIdx = targetIdx; // Dropped after target
-                                                    else checkIdx = targetIdx - 1; // Dropped before target (check neighbor above)
-
-                                                    var indent = false;
-                                                    if (checkIdx >= 0 && checkIdx < taskModel.count) {
-                                                        var neighbor = taskModel.get(checkIdx);
-                                                        // Only indent if following a group header or another sub-task
-                                                        if (neighbor && (neighbor.type === "group" || neighbor.isSubTask)) {
-                                                            indent = true;
-                                                        }
-                                                    }
-                                                    
-                                                    // Special case: Dropped AFTER a group block entirely
-                                                    // If neighbor is sub-task but we are dropping at a position that breaks the group chain?
-                                                    // (Simple model: if neighbor is subtask/group, we stay subtask).
-                                                    taskModel.setProperty(dragIdx, "isSubTask", indent);
+                                                    taskModel.setProperty(dragIdx, "isSubTask", false);
                                                 }
                                                 taskModel.move(dragIdx, finalDest, 1);
                                             }
