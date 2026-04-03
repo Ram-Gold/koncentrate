@@ -7,47 +7,38 @@ import org.kde.kcmutils as KCM
 import QtQuick.Dialogs
 
 KCM.SimpleKCM {
-    // Expose each setting as a property bound to the plasmoid configuration.
-    // The Plasma config system watches these; changes enable the "Apply" button.
-    property int cfg_focusTime: Plasmoid.configuration.focusTime
-    property int cfg_shortBreakTime: Plasmoid.configuration.shortBreakTime
-    property int cfg_longBreakTime: Plasmoid.configuration.longBreakTime
-    property int cfg_numberOfSessions: Plasmoid.configuration.numberOfSessions
-    property bool cfg_playChime: Plasmoid.configuration.playChime
-    property string cfg_chimePath: Plasmoid.configuration.chimePath
-
     Kirigami.FormLayout {
         // --- Timer Durations ---
         QQC2.SpinBox {
             Kirigami.FormData.label: i18n("Focus Duration (min):")
             from: 1
             to: 120
-            value: cfg_focusTime
-            onValueModified: cfg_focusTime = value
+            id: kcfg_focusTime
+            value: 25
         }
-
+    
         QQC2.SpinBox {
             Kirigami.FormData.label: i18n("Short Break Duration (min):")
             from: 1
             to: 60
-            value: cfg_shortBreakTime
-            onValueModified: cfg_shortBreakTime = value
+            id: kcfg_shortBreakTime
+            value: 5
         }
-
+    
         QQC2.SpinBox {
             Kirigami.FormData.label: i18n("Long Break Duration (min):")
             from: 1
             to: 120
-            value: cfg_longBreakTime
-            onValueModified: cfg_longBreakTime = value
+            id: kcfg_longBreakTime
+            value: 15
         }
-
+    
         QQC2.SpinBox {
             Kirigami.FormData.label: i18n("Number of Sessions:")
             from: 1
             to: 10
-            value: cfg_numberOfSessions
-            onValueModified: cfg_numberOfSessions = value
+            id: kcfg_numberOfSessions
+            value: 5
         }
 
         Kirigami.Separator {
@@ -57,58 +48,49 @@ KCM.SimpleKCM {
 
         QQC2.CheckBox {
             Kirigami.FormData.label: i18n("Enable Chime:")
-            checked: cfg_playChime
-            onToggled: cfg_playChime = checked
+            id: kcfg_playChime
         }
 
         RowLayout {
             Kirigami.FormData.label: i18n("Chime Sound:")
             Layout.fillWidth: true
-
+            
             QQC2.TextField {
-                id: chimePathField
+                id: kcfg_chimePath
                 Layout.fillWidth: true
                 placeholderText: i18n("Path to mp3/wav...")
-                text: cfg_chimePath
-                onTextChanged: cfg_chimePath = text
             }
-
+        
             QQC2.Button {
                 icon.name: "document-open"
                 onClicked: chimeFileDialog.open()
                 QQC2.ToolTip.visible: hovered
                 QQC2.ToolTip.text: i18n("Browse...")
             }
-
+            
             QQC2.Button {
                 icon.name: "media-playback-start"
                 onClicked: previewPlayer.play()
-                enabled: chimePathField.text !== ""
+                enabled: kcfg_chimePath.text !== ""
                 QQC2.ToolTip.visible: hovered
                 QQC2.ToolTip.text: i18n("Play Sound")
             }
-        }
+    }
     }
 
-    // --- File Picker ---
+    // --- Components for Sound & Dialog ---
     FileDialog {
         id: chimeFileDialog
         title: i18n("Select Chime Sound")
         nameFilters: [i18n("Audio Files (*.mp3 *.wav *.ogg *.aac)")]
         onAccepted: {
-            chimePathField.text = selectedFile.toString().replace("file://", "")
+            kcfg_chimePath.text = selectedFile.toString().replace("file://", "");
         }
     }
 
-    // --- Sound Preview ---
     MediaPlayer {
         id: previewPlayer
         audioOutput: AudioOutput {}
-        source: {
-            let p = chimePathField.text
-            if (p.startsWith("/")) return "file://" + p
-            if (p.startsWith("contents")) return Qt.resolvedUrl("../../" + p)
-            return p
-        }
+        source: kcfg_chimePath.text.startsWith("/") ? "file://" + kcfg_chimePath.text : (kcfg_chimePath.text.startsWith("contents") ? Qt.resolvedUrl("../../" + kcfg_chimePath.text) : kcfg_chimePath.text)
     }
 }
