@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0
+      http://www.kde.org/standards/kcfg/1.0/kcfg.xsd" >
+  <group name="General">
+    <entry name="focusTime" type="Int">
+      <default>25</default>
+    </entry>
+    <entry name="shortBreakTime" type="Int">
+      <default>5</default>
+    </entry>
+    <entry name="longBreakTime" type="Int">
+      <default>15</default>
+    </entry>
+    <entry name="numberOfSessions" type="Int">
+      <default>4</default>
+    </entry>
+    <entry name="chimePath" type="String">
+      <default>contents/assets/chime.mp3</default>
+    </entry>
+    <entry name="playChime" type="Bool">
+      <default>true</default>
+    </entry>
+  </group>
+</kcfg>

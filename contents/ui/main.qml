@@ -7,6 +7,7 @@ import org.kde.plasma.extras as PlasmaExtras
 import org.kde.plasma.plasmoid
 import org.kde.kirigami as Kirigami
 import QtQuick.Shapes 1.0
+import QtMultimedia
 
 /**
  * Koncentrate: Unified Pomodoro & To-Do Widget
@@ -15,11 +16,11 @@ import QtQuick.Shapes 1.0
 PlasmoidItem {
     id: root
 
-    // @CONFIG_START: Pomodoro Durations & State
-    property int focusTime: 25 * 60
-    property int shortBreakTime: 5 * 60
-    property int longBreakTime: 15 * 60
-    property int numberOfSessions: 4
+    // @CONFIG_START: Pomodoro Durations & State (Synced with Config)
+    readonly property int focusTime: plasmoid.configuration.focusTime * 60
+    readonly property int shortBreakTime: plasmoid.configuration.shortBreakTime * 60
+    readonly property int longBreakTime: plasmoid.configuration.longBreakTime * 60
+    readonly property int numberOfSessions: plasmoid.configuration.numberOfSessions
     
     property int timerState: 0 // 0: Stopped/Paused, 1: Running
     property int stateVal: 1 // 1: Focus, 2: Short Break, etc.
@@ -177,8 +178,26 @@ PlasmoidItem {
                 counterSeconds--;
             } else {
                 timerState = 0;
+                if (plasmoid.configuration.playChime) {
+                    chimePlayer.play();
+                }
                 nextState();
             }
+        }
+    }
+
+    MediaPlayer {
+        id: chimePlayer
+        audioOutput: AudioOutput {}
+        source: {
+            let path = plasmoid.configuration.chimePath;
+            if (path.startsWith("contents")) {
+                return Qt.resolvedUrl("../" + path.replace("contents/", ""));
+            }
+            if (path.startsWith("/")) {
+                return "file://" + path;
+            }
+            return path;
         }
     }
 
@@ -360,8 +379,10 @@ PlasmoidItem {
                     
                     PlasmaExtras.Heading {
                         text: formatTime(counterSeconds)
-                        font.pixelSize: Kirigami.Units.gridUnit * 2.8
-                        font.weight: Font.DemiBold
+                        font {
+                            pixelSize: Kirigami.Units.gridUnit * 2.8
+                            weight: Font.DemiBold
+                        }
                         Layout.alignment: Qt.AlignHCenter
                     }
                     
@@ -935,56 +956,63 @@ PlasmoidItem {
                     Layout.fillWidth: true
                     spacing: Kirigami.Units.gridUnit
                     
-                    RowLayout {
-                        spacing: Kirigami.Units.smallSpacing
-                        opacity: 0.7
-                        
-                        Kirigami.Icon {
-                            source: "list-add"
-                            implicitWidth: Kirigami.Units.gridUnit * 1.0
-                            implicitHeight: Kirigami.Units.gridUnit * 1.0
+                    MouseArea {
+                        id: newTaskBtn
+                        Layout.preferredWidth: newTaskLayout.implicitWidth
+                        Layout.preferredHeight: newTaskLayout.implicitHeight
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            taskModel.append({ taskName: "", done: false, isEditing: true, type: "task", isSubTask: false });
+                            taskList.positionViewAtEnd();
                         }
                         
-                        PlasmaComponents.Label {
-                            text: i18n("New Task")
-                            font.pixelSize: Kirigami.Units.gridUnit * 0.7
-                        }
-                        
-                        MouseArea {
+                        RowLayout {
+                            id: newTaskLayout
                             anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                taskModel.append({ taskName: "", done: false, isEditing: true, type: "task", isSubTask: false });
-                                taskList.positionViewAtEnd();
+                            spacing: Kirigami.Units.smallSpacing
+                            opacity: newTaskBtn.containsMouse ? 1.0 : 0.7
+                            
+                            Kirigami.Icon {
+                                source: "list-add"
+                                implicitWidth: Kirigami.Units.gridUnit * 1.0
+                                implicitHeight: Kirigami.Units.gridUnit * 1.0
+                            }
+                            
+                            PlasmaComponents.Label {
+                                text: i18n("New Task")
+                                font.pixelSize: Kirigami.Units.gridUnit * 0.7
                             }
                         }
                     }
                     
-                    RowLayout {
-                        spacing: Kirigami.Units.smallSpacing
-                        opacity: 0.7
-                        
-                        Kirigami.Icon {
-                            source: "list-add"
-                            implicitWidth: Kirigami.Units.gridUnit * 1.0
-                            implicitHeight: Kirigami.Units.gridUnit * 1.0
+                    MouseArea {
+                        id: newGroupBtn
+                        Layout.preferredWidth: newGroupLayout.implicitWidth
+                        Layout.preferredHeight: newGroupLayout.implicitHeight
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            let groupCount = 0;
+                            for (let i = 0; i < taskModel.count; i++) {
+                                if (taskModel.get(i).type === "group" || taskModel.get(i).isSubTask) groupCount = i + 1;
+                            }
+                            taskModel.insert(groupCount, { taskName: "", done: false, isEditing: true, type: "group", isSubTask: false, isCollapsed: false });
                         }
                         
-                        PlasmaComponents.Label {
-                            text: i18n("New Group")
-                            font.pixelSize: Kirigami.Units.gridUnit * 0.7
-                        }
-                        
-                        MouseArea {
+                        RowLayout {
+                            id: newGroupLayout
                             anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                // Insert New Group and its indentation after existing groups
-                                let groupCount = 0;
-                                for (let i = 0; i < taskModel.count; i++) {
-                                    if (taskModel.get(i).type === "group" || taskModel.get(i).isSubTask) groupCount = i + 1;
-                                }
-                                taskModel.insert(groupCount, { taskName: "", done: false, isEditing: true, type: "group", isSubTask: false, isCollapsed: false });
+                            spacing: Kirigami.Units.smallSpacing
+                            opacity: newGroupBtn.containsMouse ? 1.0 : 0.7
+                            
+                            Kirigami.Icon {
+                                source: "list-add"
+                                implicitWidth: Kirigami.Units.gridUnit * 1.0
+                                implicitHeight: Kirigami.Units.gridUnit * 1.0
+                            }
+                            
+                            PlasmaComponents.Label {
+                                text: i18n("New Group")
+                                font.pixelSize: Kirigami.Units.gridUnit * 0.7
                             }
                         }
                     }
