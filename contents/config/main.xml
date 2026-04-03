@@ -14,7 +14,7 @@
       <default>15</default>
     </entry>
     <entry name="numberOfSessions" type="Int">
-      <default>4</default>
+      <default>5</default>
     </entry>
     <entry name="chimePath" type="String">
       <default>contents/assets/chime.mp3</default>
