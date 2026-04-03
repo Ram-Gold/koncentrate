@@ -27,10 +27,13 @@ PlasmoidItem {
     property int initialSeconds: focusTime
     // @CONFIG_END
 
+    Kirigami.Theme.colorSet: Kirigami.Theme.Window
+    Kirigami.Theme.inherit: true
+
     property color phaseColor: {
-        if (stateVal === (numberOfSessions * 2)) return "#2196F3" // Blue (Long Break)
-        if (isBreak()) return "#4CAF50" // Green (Short Break)
-        return "#F44336" // Red (Pomodoro)
+        if (stateVal === (numberOfSessions * 2)) return Kirigami.Theme.neutralTextColor // Theme Neutral (Long Break)
+        if (isBreak()) return Kirigami.Theme.positiveTextColor // Theme Positive (Short Break)
+        return Kirigami.Theme.negativeTextColor // Theme Negative (Pomodoro/Focus)
     }
 
     // @MODEL: Task & Group Data
@@ -247,11 +250,6 @@ PlasmoidItem {
         Layout.preferredWidth: Kirigami.Units.gridUnit * 16
         Layout.preferredHeight: Kirigami.Units.gridUnit * 25
         Layout.minimumWidth: Kirigami.Units.gridUnit * 12
-        Layout.minimumHeight: Kirigami.Units.gridUnit * 22
-
-        // @UI_STYLING: Theme-aware aesthetics and Progress visualization
-        Kirigami.Theme.colorSet: Kirigami.Theme.Window
-        Kirigami.Theme.inherit: true
 
         ColumnLayout {
             anchors.fill: parent
@@ -587,7 +585,7 @@ PlasmoidItem {
                         id: taskDelegate
                         width: taskList.width
                         property bool hiddenByGroup: model.isSubTask && root.isParentCollapsed(index)
-                        height: hiddenByGroup ? 0 : (Kirigami.Units.gridUnit * 1.6 + dropIndicator.height)
+                        height: hiddenByGroup ? 0 : (Kirigami.Units.gridUnit * 1.9 + dropIndicator.height)
                         visible: height > 0
                         clip: true
                         
@@ -815,7 +813,7 @@ PlasmoidItem {
                                 Layout.fillWidth: true
                                 visible: !model.isEditing
                                 text: model.taskName
-                                font.pixelSize: Kirigami.Units.gridUnit * 0.7
+                                font.pixelSize: Kirigami.Units.gridUnit * 0.8
                                 font.weight: isGroup ? Font.Bold : Font.Normal
                                 font.strikeout: !isGroup && model.done
                                 opacity: (!isGroup && model.done) ? 0.5 : 1.0
