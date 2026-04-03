@@ -1,0 +1,34 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Ramgoulds",
+                "Email": "ram@goulds.dev"
+            }
+        ],
+        "Category": "Utilities",
+        "Description": "A unified Pomodoro timer and task list widget based on Fokus, built for Plasma 6.",
+        "Icon": "timer",
+        "Id": "ramgolds.koncentrate",
+        "License": "GPL-3.0-or-later",
+        "Name": "Koncentrate",
+        "ServiceTypes": [
+            "Plasma/Applet"
+        ],
+        "Version": "1.0.0",
+        "Website": "https://github.com/ramgolds/koncentrate"
+    },
+    "Plasma": {
+        "Types": [
+            "Applet"
+        ],
+        "API": "declarative",
+        "DefaultSize": {
+            "Width": 320,
+            "Height": 480
+        }
+    },
+    "X-Plasma-API": "declarativeappletscript",
+    "X-Plasma-API-Minimum-Version": "6.0"
+}
