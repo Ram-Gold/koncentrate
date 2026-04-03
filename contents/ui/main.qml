@@ -179,27 +179,44 @@ PlasmoidItem {
             } else {
                 timerState = 0;
                 if (plasmoid.configuration.playChime) {
-                    chimePlayer.play();
+                    playChimeSound();
                 }
                 nextState();
             }
         }
     }
 
+    // Resolves chimePath to a proper QML URL for any file format
+    function resolveChimePath(path) {
+        if (!path || path === "") return "";
+        // Strip file:// prefix if present, then treat as absolute
+        if (path.startsWith("file://")) path = path.replace("file://", "");
+        // URL-decode percent-encoded paths (e.g. %5B -> [)
+        try { path = decodeURIComponent(path); } catch(e) {}
+        // Absolute path
+        if (path.startsWith("/")) return "file://" + path;
+        // Relative to the plasmoid package (e.g. "contents/assets/chime.mp3")
+        if (path.startsWith("contents/")) {
+            return Qt.resolvedUrl("../" + path.replace("contents/", ""));
+        }
+        // Already a bare URL or relative
+        return path;
+    }
+
+    // Stop, reset position, then play to avoid timestamp/decoder errors
+    function playChimeSound() {
+        chimePlayer.stop();
+        chimePlayer.source = "";
+        chimePlayer.source = resolveChimePath(plasmoid.configuration.chimePath);
+        chimePlayer.play();
+    }
+
     MediaPlayer {
         id: chimePlayer
         audioOutput: AudioOutput {}
-        source: {
-            let path = plasmoid.configuration.chimePath;
-            if (path.startsWith("contents")) {
-                return Qt.resolvedUrl("../" + path.replace("contents/", ""));
-            }
-            if (path.startsWith("/")) {
-                return "file://" + path;
-            }
-            return path;
-        }
+        source: resolveChimePath(plasmoid.configuration.chimePath)
     }
+
 
     // --- REPRESENTATIONS ---
 

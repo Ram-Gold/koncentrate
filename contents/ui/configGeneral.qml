@@ -96,7 +96,11 @@ KCM.SimpleKCM {
         title: i18n("Select Chime Sound")
         nameFilters: [i18n("Audio Files (*.mp3 *.wav *.ogg *.aac)")]
         onAccepted: {
-            chimePathField.text = selectedFile.toString().replace("file://", "")
+            // selectedFile is a QUrl — convert to a clean absolute path
+            let raw = selectedFile.toString()
+            if (raw.startsWith("file://")) raw = raw.substring(7)
+            try { raw = decodeURIComponent(raw) } catch(e) {}
+            chimePathField.text = raw
         }
     }
 
@@ -107,7 +111,7 @@ KCM.SimpleKCM {
         source: {
             let p = chimePathField.text
             if (p.startsWith("/")) return "file://" + p
-            if (p.startsWith("contents")) return Qt.resolvedUrl("../../" + p)
+            if (p.startsWith("contents/")) return Qt.resolvedUrl("../../" + p)
             return p
         }
     }
