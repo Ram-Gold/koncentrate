@@ -617,6 +617,15 @@ PlasmoidItem {
                     property int hoveredGroupIndex: -1
                     property int dropMode: 0 // 0: None, 1: Top, 2: Bottom, 3: Center
                     property bool isDropAtEnd: false
+                    property int modelUpdateTrigger: 0
+                    
+                    Connections {
+                        target: taskModel
+                        function onDataChanged() { taskList.modelUpdateTrigger++; }
+                        function onRowsMoved() { taskList.modelUpdateTrigger++; }
+                        function onRowsInserted() { taskList.modelUpdateTrigger++; }
+                        function onRowsRemoved() { taskList.modelUpdateTrigger++; }
+                    }
                     
                     model: taskModel
 
@@ -632,6 +641,11 @@ PlasmoidItem {
                         property bool isHovered: mouseArea.containsMouse
                         property bool isDragging: taskList.draggingIndex === index
                         property bool isGroup: model.type === "group"
+                        property int _refresh: taskList.modelUpdateTrigger // Force re-evaluation on model changes
+                        // Sub-tasks ALWAYS connect up (to header or sibling)
+                        property bool connectsToPrev: (_refresh >= 0) && model.isSubTask
+                        // Connect down only IF the next item is a sub-task
+                        property bool connectsToNext: (_refresh >= 0) && ((isGroup && !model.isCollapsed && index < taskModel.count - 1 && taskModel.get(index + 1).isSubTask) || (model.isSubTask && index < taskModel.count - 1 && taskModel.get(index + 1).isSubTask))
                         
                         opacity: isDragging ? 0.5 : (hiddenByGroup ? 0 : 1.0)
                         Behavior on opacity { NumberAnimation { duration: 250 } }
@@ -680,35 +694,42 @@ PlasmoidItem {
                             Behavior on opacity { NumberAnimation { duration: 150 } }
                         }
 
-                        // The Task Card
-                        Rectangle {
-                            id: cardBackground
+                        // The Unified Task Card
+                        Item {
+                            id: cardContainer
                             anchors.fill: parent
-                            anchors.topMargin: Kirigami.Units.smallSpacing / 2
-                            anchors.bottomMargin: Kirigami.Units.smallSpacing / 2
+                            anchors.topMargin: taskDelegate.connectsToPrev ? 0 : Kirigami.Units.smallSpacing / 2
+                            anchors.bottomMargin: taskDelegate.connectsToNext ? 0 : Kirigami.Units.smallSpacing / 2
                             anchors.rightMargin: Kirigami.Units.gridUnit / 2
-                            radius: 12 // More rounded, pill-like look
-                            color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.1)
-                            opacity: 1.0 // Unified with color opacity
-                            border.width: 1
-                            border.color: color // Seamless look
-                            
-                            Behavior on color { ColorAnimation { duration: 200 } }
-                            
-                            // Hover effect inside the card
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: parent.radius
-                                color: Kirigami.Theme.highlightColor
-                                opacity: taskDelegate.isHovered ? 0.1 : 0
-                                Behavior on opacity { NumberAnimation { duration: 150 } }
-                            }
+                            clip: true
 
-                            RowLayout {
+                            Rectangle {
+                                id: cardBackground
                                 anchors.fill: parent
-                                anchors.leftMargin: Kirigami.Units.largeSpacing // Extra space for "⣿" handle
-                                anchors.rightMargin: Kirigami.Units.smallSpacing
-                                spacing: Kirigami.Units.smallSpacing
+                                anchors.topMargin: taskDelegate.connectsToPrev ? -(radius + 2) : 0
+                                anchors.bottomMargin: taskDelegate.connectsToNext ? -(radius + 2) : 0
+                                radius: 12
+                                color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.1)
+                                opacity: 1.0 
+                                border.width: 1
+                                border.color: color // Seamless look
+                                
+                                Behavior on color { ColorAnimation { duration: 200 } }
+                                
+                                // Hover effect
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: parent.radius
+                                    color: Kirigami.Theme.highlightColor
+                                    opacity: taskDelegate.isHovered ? 0.1 : 0
+                                    Behavior on opacity { NumberAnimation { duration: 150 } }
+                                }
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: Kirigami.Units.largeSpacing // Extra space for "⣿" handle
+                                    anchors.rightMargin: Kirigami.Units.smallSpacing
+                                    spacing: Kirigami.Units.smallSpacing
                             
                             // Grab handle
                             PlasmaComponents.Label {
@@ -785,15 +806,23 @@ PlasmoidItem {
                                                 
                                                 var draggedItem = taskModel.get(dragIdx);
                                                 if (draggedItem.type === "task") {
-                                                    // Determine auto-indent based on neighbor
-                                                    var checkIdx = (taskList.dropMode === 2) ? targetIdx : targetIdx - 1;
+                                                    // Determine auto-indent based on the item we are landing AFTER
+                                                    var checkIdx = -1;
+                                                    if (taskList.dropMode === 2) checkIdx = targetIdx; // Dropped after target
+                                                    else checkIdx = targetIdx - 1; // Dropped before target (check neighbor above)
+
                                                     var indent = false;
                                                     if (checkIdx >= 0 && checkIdx < taskModel.count) {
                                                         var neighbor = taskModel.get(checkIdx);
+                                                        // Only indent if following a group header or another sub-task
                                                         if (neighbor && (neighbor.type === "group" || neighbor.isSubTask)) {
                                                             indent = true;
                                                         }
                                                     }
+                                                    
+                                                    // Special case: Dropped AFTER a group block entirely
+                                                    // If neighbor is sub-task but we are dropping at a position that breaks the group chain?
+                                                    // (Simple model: if neighbor is subtask/group, we stay subtask).
                                                     taskModel.setProperty(dragIdx, "isSubTask", indent);
                                                 }
                                                 taskModel.move(dragIdx, finalDest, 1);
@@ -973,7 +1002,8 @@ PlasmoidItem {
                                 }
                             }
                         }
-                        }
+                    }
+                }
 
                         MouseArea {
                             id: mouseArea
