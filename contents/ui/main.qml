@@ -32,6 +32,12 @@ PlasmoidItem {
         return "#F44336" // Red (Pomodoro)
     }
 
+    // @MODEL: Task & Group Data
+    ListModel {
+        id: taskModel
+        // Shared model for all representations
+    }
+
     // @LOGIC_ENGINE: Timer state machine and formatting
     function formatTime(totalSeconds) {
         let hours = Math.floor(totalSeconds / 3600);
@@ -93,12 +99,68 @@ PlasmoidItem {
     }
 
     function getTaskStats() {
+        if (typeof taskModel === "undefined" || !taskModel) return "(0/0)";
         let done = 0;
-        let total = taskModel.count;
-        for (let i = 0; i < total; i++) {
-            if (taskModel.get(i).done) done++;
+        let total = 0;
+        for (let i = 0; i < taskModel.count; i++) {
+            let item = taskModel.get(i);
+            if (item && item.type === "task") {
+                total++;
+                if (item.done) done++;
+            }
         }
         return "(" + done + "/" + total + ")";
+    }
+
+    function getGroupStats(groupIndex) {
+        if (typeof taskModel === "undefined" || !taskModel) return "(0/0)";
+        let done = 0;
+        let total = 0;
+        for (let i = groupIndex + 1; i < taskModel.count; i++) {
+            let item = taskModel.get(i);
+            if (!item || item.type === "group") break;
+            if (item.isSubTask) {
+                total++;
+                if (item.done) done++;
+            } else {
+                break;
+            }
+        }
+        return "(" + done + "/" + total + ")";
+    }
+
+    function isParentCollapsed(index) {
+        if (typeof taskModel === "undefined" || !taskModel) return false;
+        for (let i = index - 1; i >= 0; i--) {
+            let item = taskModel.get(i);
+            if (item && item.type === "group") return item.isCollapsed === true;
+        }
+        return false;
+    }
+
+    function toggleGroup(index) {
+        if (typeof taskModel === "undefined" || !taskModel) return;
+        let current = taskModel.get(index).isCollapsed;
+        taskModel.setProperty(index, "isCollapsed", !current);
+    }
+
+    function removeTask(index) {
+        if (typeof taskModel === "undefined" || !taskModel || index < 0 || index >= taskModel.count) return;
+        let item = taskModel.get(index);
+        if (item.type === "group") {
+            taskModel.remove(index);
+            // Cascade delete sub-tasks
+            while (index < taskModel.count) {
+                let next = taskModel.get(index);
+                if (next && next.isSubTask) {
+                    taskModel.remove(index);
+                } else {
+                    break;
+                }
+            }
+        } else {
+            taskModel.remove(index);
+        }
     }
 
     Timer {
@@ -152,9 +214,9 @@ PlasmoidItem {
     fullRepresentation: Item {
         id: fullRoot
         
-        Layout.preferredWidth: Kirigami.Units.gridUnit * 18
+        Layout.preferredWidth: Kirigami.Units.gridUnit * 16
         Layout.preferredHeight: Kirigami.Units.gridUnit * 25
-        Layout.minimumWidth: Kirigami.Units.gridUnit * 14
+        Layout.minimumWidth: Kirigami.Units.gridUnit * 12
         Layout.minimumHeight: Kirigami.Units.gridUnit * 22
 
         // @UI_STYLING: Theme-aware aesthetics and Progress visualization
@@ -476,8 +538,8 @@ PlasmoidItem {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true
-                    spacing: Kirigami.Units.smallSpacing
-                    interactive: false
+                    spacing: 0
+                    interactive: (draggingIndex === -1)
                     
                     QQC2.ScrollBar.vertical: QQC2.ScrollBar {
                         width: Kirigami.Units.gridUnit * 0.5
@@ -486,32 +548,51 @@ PlasmoidItem {
                     
                     property int draggingIndex: -1
                     property int targetIndex: -1
+                    property int hoveredGroupIndex: -1
+                    property bool isDropAtEnd: false
                     
-                    model: ListModel {
-                        id: taskModel
-                    }
+                    model: taskModel
 
                     delegate: Item {
                         id: taskDelegate
                         width: taskList.width
-                        height: Math.max(checkDelegate.height, Kirigami.Units.gridUnit * 2) + dropIndicator.height
+                        property bool hiddenByGroup: model.isSubTask && root.isParentCollapsed(index)
+                        height: hiddenByGroup ? 0 : (Kirigami.Units.gridUnit * 1.6 + dropIndicator.height)
+                        visible: height > 0
+                        clip: true
                         
+                        Behavior on height { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
                         property bool isHovered: mouseArea.containsMouse
                         property bool isDragging: taskList.draggingIndex === index
-                        opacity: isDragging ? 0.5 : 1.0
+                        property bool isGroup: model.type === "group"
+                        
+                        opacity: isDragging ? 0.5 : (hiddenByGroup ? 0 : 1.0)
+                        Behavior on opacity { NumberAnimation { duration: 250 } }
                         Behavior on opacity { NumberAnimation { duration: 200 } }
                         
-                        // Drop Indicator Line
+                        // Drop Indicator Line (Horizontal)
                         Rectangle {
                             id: dropIndicator
                             width: parent.width
-                            height: (taskList.draggingIndex !== -1 && taskList.targetIndex === index) ? 2 : 0
+                            height: (taskList.draggingIndex !== -1 && taskList.targetIndex === index && taskList.hoveredGroupIndex === -1) ? 2 : 0
                             color: root.phaseColor
-                            anchors.top: parent.top
+                            anchors.top: (taskList.isDropAtEnd && index === taskModel.count - 1) ? undefined : parent.top
+                            anchors.bottom: (taskList.isDropAtEnd && index === taskModel.count - 1) ? parent.bottom : undefined
                             visible: height > 0
                             z: 5
                             
                             Behavior on height { NumberAnimation { duration: 150 } }
+                        }
+
+                        // Group Border Indicator
+                        Rectangle {
+                            id: groupBorderIndicator
+                            anchors.fill: parent
+                            border.width: 2
+                            border.color: root.phaseColor
+                            color: "transparent"
+                            visible: isGroup && taskList.hoveredGroupIndex === index
+                            z: 10
                         }
 
                         RowLayout {
@@ -523,11 +604,15 @@ PlasmoidItem {
                                 text: "⣿"
                                 font.pixelSize: Kirigami.Units.gridUnit * 0.8
                                 opacity: 0.3
+                                visible: !isGroup
                                 Layout.alignment: Qt.AlignVCenter
+                                Layout.leftMargin: (model.type === "task" && model.isSubTask) ? Kirigami.Units.gridUnit : 0
                                 
                                 MouseArea {
+                                    id: grabMouseArea
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
+                                    enabled: !isGroup
                                     
                                     onPressed: (mouse) => {
                                         taskList.draggingIndex = index;
@@ -537,46 +622,126 @@ PlasmoidItem {
                                         if (taskList.draggingIndex !== -1) {
                                             var pos = mapToItem(taskList, mouse.x, mouse.y);
                                             var target = taskList.indexAt(pos.x, pos.y + taskList.contentY);
-                                            if (target !== -1) {
-                                                taskList.targetIndex = target;
+                                            
+                                            // Detect if we are dragging below the last item
+                                            if (target === -1 && pos.y > 0) {
+                                                taskList.targetIndex = taskModel.count - 1;
+                                                taskList.isDropAtEnd = true;
+                                                taskList.hoveredGroupIndex = -1;
+                                            } else if (target !== -1) {
+                                                var targetItem = taskModel.get(target);
+                                                taskList.isDropAtEnd = false;
+                                                if (targetItem.type === "group") {
+                                                    taskList.hoveredGroupIndex = target;
+                                                    taskList.targetIndex = -1;
+                                                } else {
+                                                    taskList.hoveredGroupIndex = -1;
+                                                    taskList.targetIndex = target;
+                                                }
                                             }
                                         }
                                     }
                                     
                                     onReleased: (mouse) => {
-                                        if (taskList.draggingIndex !== -1 && taskList.targetIndex !== -1) {
-                                            taskModel.move(taskList.draggingIndex, taskList.targetIndex, 1);
+                                        if (taskList.draggingIndex !== -1) {
+                                            if (taskList.hoveredGroupIndex !== -1) {
+                                                // Drop onto Group: set as sub-task and move to top of group
+                                                taskModel.setProperty(taskList.draggingIndex, "isSubTask", true);
+                                                taskModel.move(taskList.draggingIndex, taskList.hoveredGroupIndex + 1, 1);
+                                            } else if (taskList.targetIndex !== -1) {
+                                                let targetIndex = taskList.targetIndex;
+                                                let draggingIndex = taskList.draggingIndex;
+                                                var draggedItem = taskModel.get(draggingIndex);
+                                                
+                                                if (draggedItem.type === "task") {
+                                                    var targetIndent = false;
+                                                    // Intuitive "Escape": If dropped at the very bottom of the list, it flattens
+                                                    if (targetIndex < taskModel.count - 1 || taskModel.count === 1) {
+                                                        if (targetIndex > 0) {
+                                                            var checkIndex = targetIndex > draggingIndex ? targetIndex : targetIndex - 1;
+                                                            var prevItem = taskModel.get(checkIndex);
+                                                            if (prevItem && (prevItem.type === "group" || prevItem.isSubTask)) {
+                                                                targetIndent = true;
+                                                            }
+                                                        }
+                                                    } else {
+                                                        // Dropped at the very last slot: flatten
+                                                        targetIndent = false;
+                                                    }
+                                                    taskModel.setProperty(draggingIndex, "isSubTask", targetIndent);
+                                                }
+                                                // Move item
+                                                taskModel.move(draggingIndex, targetIndex, 1);
+                                            }
                                         }
                                         taskList.draggingIndex = -1;
                                         taskList.targetIndex = -1;
+                                        taskList.hoveredGroupIndex = -1;
                                     }
+                                }
+                            }
+
+                            // Collapse/Expand Arrow for groups
+                            Kirigami.Icon {
+                                visible: isGroup
+                                source: (isGroup && model.isCollapsed) ? "go-next-symbolic" : "go-down-symbolic"
+                                implicitWidth: Kirigami.Units.gridUnit * 1.0
+                                implicitHeight: Kirigami.Units.gridUnit * 1.0
+                                opacity: 0.6
+                                Layout.alignment: Qt.AlignVCenter
+                                
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: root.toggleGroup(index)
                                 }
                             }
                             
                             PlasmaComponents.CheckBox {
                                 id: checkDelegate
                                 checked: model.done
-                                onToggled: model.done = checked
+                                onToggled: taskModel.setProperty(index, "done", checked)
+                                visible: !isGroup
                                 
                                 Layout.alignment: Qt.AlignVCenter
                                 
                                 indicator: Rectangle {
-                                    implicitWidth: Kirigami.Units.gridUnit * 0.9
-                                    implicitHeight: Kirigami.Units.gridUnit * 0.9
-                                    radius: 3
-                                    color: "transparent"
-                                    border.color: Kirigami.Theme.textColor
+                                    implicitWidth: Kirigami.Units.gridUnit * 1.0
+                                    implicitHeight: Kirigami.Units.gridUnit * 1.0
+                                    radius: 4
+                                    color: checkDelegate.checked ? root.phaseColor : "transparent"
+                                    border.color: checkDelegate.checked ? root.phaseColor : Kirigami.Theme.textColor
                                     border.width: 1
-                                    opacity: checkDelegate.checked ? 0.8 : 0.3
+                                    opacity: checkDelegate.checked ? 1.0 : 0.4
+                                    
+                                    Behavior on color { ColorAnimation { duration: 200 } }
 
                                     Kirigami.Icon {
                                         anchors.centerIn: parent
-                                        width: parent.width * 0.8
+                                        width: parent.width * 0.7
                                         height: width
                                         source: "checkmark"
                                         visible: checkDelegate.checked
-                                        color: Kirigami.Theme.highlightColor
+                                        color: Kirigami.Theme.highlightedTextColor
                                     }
+                                }
+                            }
+
+                            // Group Folder Icon (Click to toggle)
+                            Kirigami.Icon {
+                                id: groupIcon
+                                source: (isGroup && model.isCollapsed) ? "folder" : "folder-open"
+                                implicitWidth: Kirigami.Units.gridUnit * 1.0
+                                implicitHeight: Kirigami.Units.gridUnit * 1.0
+                                visible: isGroup
+                                color: root.phaseColor
+                                opacity: 0.8
+                                Layout.alignment: Qt.AlignVCenter
+                                
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: root.toggleGroup(index)
                                 }
                             }
 
@@ -621,12 +786,52 @@ PlasmoidItem {
                                 visible: !model.isEditing
                                 text: model.taskName
                                 font.pixelSize: Kirigami.Units.gridUnit * 0.7
-                                font.strikeout: model.done
-                                opacity: model.done ? 0.5 : 1.0
+                                font.weight: isGroup ? Font.Bold : Font.Normal
+                                font.strikeout: !isGroup && model.done
+                                opacity: (!isGroup && model.done) ? 0.5 : 1.0
                                 verticalAlignment: Text.AlignVCenter
-                                wrapMode: Text.WordWrap
+                                elide: Text.ElideRight
+                                maximumLineCount: 1
                                 Behavior on opacity { NumberAnimation { duration: 250 } }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        taskModel.setProperty(index, "isEditing", true);
+                                    }
+                                }
                             }
+
+                            // Group Counter Pill
+                            Rectangle {
+                                id: groupCounterPill
+                                width: statsLabel.width + Kirigami.Units.gridUnit * 0.8
+                                height: Kirigami.Units.gridUnit * 1.1
+                                radius: height / 2
+                                color: root.phaseColor
+                                opacity: isGroup && !model.isEditing ? 0.8 : 0
+                                visible: isGroup && !model.isEditing
+                                Layout.alignment: Qt.AlignVCenter
+                                Layout.rightMargin: Kirigami.Units.smallSpacing
+
+                                PlasmaComponents.Label {
+                                    id: statsLabel
+                                    anchors.centerIn: parent
+                                    text: (taskModel.count, root.getGroupStats(index)).replace("(", "").replace(")", "")
+                                    font.pixelSize: Kirigami.Units.gridUnit * 0.6
+                                    font.weight: Font.Bold
+                                    color: Kirigami.Theme.highlightedTextColor
+                                    opacity: 1.0
+                                }
+
+                                Connections {
+                                    target: taskModel
+                                    function onDataChanged() { statsLabel.text = root.getGroupStats(index).replace("(", "").replace(")", ""); }
+                                    function onRowsMoved() { statsLabel.text = root.getGroupStats(index).replace("(", "").replace(")", ""); }
+                                }
+                            }
+
 
                             Kirigami.Icon {
                                 source: "window-close-symbolic"
@@ -638,7 +843,7 @@ PlasmoidItem {
                                 MouseArea {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: taskModel.remove(index)
+                                    onClicked: root.removeTask(index)
                                 }
                             }
                         }
@@ -648,7 +853,13 @@ PlasmoidItem {
                             anchors.fill: parent
                             hoverEnabled: true
                             enabled: !model.isEditing
-                            onClicked: checkDelegate.toggle()
+                            onClicked: {
+                                if (isGroup) {
+                                    // Optionally allow toggle on click if desired, but user asked for chevron
+                                } else {
+                                    taskModel.setProperty(index, "done", !model.done);
+                                }
+                            }
                             z: -1
                         }
 
@@ -715,7 +926,7 @@ PlasmoidItem {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                taskModel.append({ taskName: "", done: false, isEditing: true });
+                                taskModel.append({ taskName: "", done: false, isEditing: true, type: "task", isSubTask: false });
                                 taskList.positionViewAtEnd();
                             }
                         }
@@ -739,7 +950,14 @@ PlasmoidItem {
                         MouseArea {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: console.log("New Group clicked")
+                            onClicked: {
+                                // Insert New Group and its indentation after existing groups
+                                let groupCount = 0;
+                                for (let i = 0; i < taskModel.count; i++) {
+                                    if (taskModel.get(i).type === "group" || taskModel.get(i).isSubTask) groupCount = i + 1;
+                                }
+                                taskModel.insert(groupCount, { taskName: "", done: false, isEditing: true, type: "group", isSubTask: false, isCollapsed: false });
+                            }
                         }
                     }
                     
