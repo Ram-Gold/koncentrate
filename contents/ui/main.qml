@@ -623,9 +623,9 @@ PlasmoidItem {
                         id: taskDelegate
                         width: taskList.width
                         property bool hiddenByGroup: model.isSubTask && root.isParentCollapsed(index)
-                        height: hiddenByGroup ? 0 : (Kirigami.Units.gridUnit * 1.9 + dropIndicator.height)
+                        height: hiddenByGroup ? 0 : (Kirigami.Units.gridUnit * 2.4 + Kirigami.Units.smallSpacing)
                         visible: height > 0
-                        clip: true
+                        clip: false // Allow drop indicator to overshoot slightly if needed
                         
                         Behavior on height { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
                         property bool isHovered: mouseArea.containsMouse
@@ -636,34 +636,75 @@ PlasmoidItem {
                         Behavior on opacity { NumberAnimation { duration: 250 } }
                         Behavior on opacity { NumberAnimation { duration: 200 } }
                         
-                        // Drop Indicator Line (Horizontal)
+                        // Drop Indicator Line (Top)
                         Rectangle {
-                            id: dropIndicator
+                            id: dropIndicatorTop
                             width: parent.width
-                            height: (taskList.draggingIndex !== -1 && taskList.targetIndex === index && taskList.hoveredGroupIndex === -1) ? 2 : 0
+                            height: 2
                             color: root.phaseColor
-                            anchors.top: (taskList.isDropAtEnd && index === taskModel.count - 1) ? undefined : parent.top
-                            anchors.bottom: (taskList.isDropAtEnd && index === taskModel.count - 1) ? parent.bottom : undefined
-                            visible: height > 0
-                            z: 5
-                            
-                            Behavior on height { NumberAnimation { duration: 150 } }
+                            z: 20
+                            anchors.top: parent.top
+                            opacity: (taskList.draggingIndex !== -1 && taskList.targetIndex === index && !taskList.isDropAtEnd) ? 1.0 : 0.0
+                            visible: opacity > 0
+                            Behavior on opacity { NumberAnimation { duration: 150 } }
                         }
 
-                        // Group Border Indicator
+                        // Drop Indicator Line (Bottom - only for last item)
+                        Rectangle {
+                            id: dropIndicatorBottom
+                            width: parent.width
+                            height: 2
+                            color: root.phaseColor
+                            z: 20
+                            anchors.bottom: parent.bottom
+                            opacity: (taskList.draggingIndex !== -1 && taskList.targetIndex === index + 1 && taskList.isDropAtEnd && index === taskModel.count - 1) ? 1.0 : 0.0
+                            visible: opacity > 0
+                            Behavior on opacity { NumberAnimation { duration: 150 } }
+                        }
+
+                        // Group Nesting Indicator (Outline)
                         Rectangle {
                             id: groupBorderIndicator
                             anchors.fill: parent
                             border.width: 2
                             border.color: root.phaseColor
                             color: "transparent"
-                            visible: isGroup && taskList.hoveredGroupIndex === index
+                            radius: 12
+                            opacity: (isGroup && taskList.hoveredGroupIndex === index) ? 0.8 : 0
+                            visible: opacity > 0
                             z: 10
+                            Behavior on opacity { NumberAnimation { duration: 150 } }
                         }
 
-                        RowLayout {
+                        // The Task Card
+                        Rectangle {
+                            id: cardBackground
                             anchors.fill: parent
-                            spacing: Kirigami.Units.smallSpacing
+                            anchors.topMargin: Kirigami.Units.smallSpacing / 2
+                            anchors.bottomMargin: Kirigami.Units.smallSpacing / 2
+                            anchors.rightMargin: Kirigami.Units.gridUnit / 2
+                            radius: 12 // More rounded, pill-like look
+                            color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.1)
+                            opacity: 1.0 // Unified with color opacity
+                            border.width: 1
+                            border.color: color // Seamless look
+                            
+                            Behavior on color { ColorAnimation { duration: 200 } }
+                            
+                            // Hover effect inside the card
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: parent.radius
+                                color: Kirigami.Theme.highlightColor
+                                opacity: taskDelegate.isHovered ? 0.1 : 0
+                                Behavior on opacity { NumberAnimation { duration: 150 } }
+                            }
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: Kirigami.Units.largeSpacing // Extra space for "⣿" handle
+                                anchors.rightMargin: Kirigami.Units.smallSpacing
+                                spacing: Kirigami.Units.smallSpacing
                             
                             // Grab handle
                             PlasmaComponents.Label {
@@ -689,21 +730,40 @@ PlasmoidItem {
                                             var pos = mapToItem(taskList, mouse.x, mouse.y);
                                             var target = taskList.indexAt(pos.x, pos.y + taskList.contentY);
                                             
-                                            // Detect if we are dragging below the last item
-                                            if (target === -1 && pos.y > 0) {
-                                                taskList.targetIndex = taskModel.count - 1;
+                                            if (target !== -1) {
+                                                var targetItem = taskModel.get(target);
+                                                var delPos = mapToItem(taskDelegate, mouse.x, mouse.y);
+                                                var hoverY = delPos.y;
+                                                var h = taskDelegate.height;
+                                                
+                                                taskList.isDropAtEnd = false; // Default
+                                                
+                                                if (hoverY < h * 0.3) {
+                                                    // Top 30%: Move Before
+                                                    taskList.targetIndex = target;
+                                                    taskList.hoveredGroupIndex = -1;
+                                                } else if (hoverY > h * 0.7) {
+                                                    // Bottom 30%: Move After
+                                                    taskList.targetIndex = target + 1;
+                                                    taskList.hoveredGroupIndex = -1;
+                                                    if (target === taskModel.count - 1) {
+                                                        taskList.isDropAtEnd = true;
+                                                    }
+                                                } else {
+                                                    // Center 40%: Nest into groups, or ignore for tasks
+                                                    if (targetItem.type === "group") {
+                                                        taskList.hoveredGroupIndex = target;
+                                                        taskList.targetIndex = -1;
+                                                    } else {
+                                                        taskList.hoveredGroupIndex = -1;
+                                                        taskList.targetIndex = -1;
+                                                    }
+                                                }
+                                            } else if (pos.y > 0) {
+                                                // Draging below the last item
+                                                taskList.targetIndex = taskModel.count;
                                                 taskList.isDropAtEnd = true;
                                                 taskList.hoveredGroupIndex = -1;
-                                            } else if (target !== -1) {
-                                                var targetItem = taskModel.get(target);
-                                                taskList.isDropAtEnd = false;
-                                                if (targetItem.type === "group") {
-                                                    taskList.hoveredGroupIndex = target;
-                                                    taskList.targetIndex = -1;
-                                                } else {
-                                                    taskList.hoveredGroupIndex = -1;
-                                                    taskList.targetIndex = target;
-                                                }
                                             }
                                         }
                                     }
@@ -913,6 +973,7 @@ PlasmoidItem {
                                 }
                             }
                         }
+                        }
 
                         MouseArea {
                             id: mouseArea
@@ -929,13 +990,6 @@ PlasmoidItem {
                             z: -1
                         }
 
-                        Rectangle {
-                            anchors.fill: parent
-                            color: Kirigami.Theme.highlightColor
-                            opacity: taskDelegate.isHovered ? 0.05 : 0
-                            z: -2
-                            Behavior on opacity { NumberAnimation { duration: 150 } }
-                        }
                     }
                 }
 
