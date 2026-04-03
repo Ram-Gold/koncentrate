@@ -1,6 +1,6 @@
 # 🍅 Koncentrate
 
-A **KDE Plasma 6 widget** that combines a Pomodoro timer with a built-in To-Do List — so you can manage your tasks and stay focused, all from your desktop.
+A **KDE Plasma 6 widget** that combines a Pomodoro timer with a built-in To-Do List - so you can manage your tasks and stay focused, all from your desktop.
 
 ---
 
