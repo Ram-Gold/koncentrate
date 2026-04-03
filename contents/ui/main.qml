@@ -474,9 +474,9 @@ PlasmoidItem {
                     
                     model: ListModel {
                         id: taskModel
-                        ListElement { taskName: "Reading \"Busy Doing Nothing\""; done: false }
-                        ListElement { taskName: "Taking Notes"; done: false }
-                        ListElement { taskName: "Make Presentation"; done: false }
+                        ListElement { taskName: "Reading \"Busy Doing Nothing\""; done: false; isEditing: false }
+                        ListElement { taskName: "Taking Notes"; done: false; isEditing: false }
+                        ListElement { taskName: "Make Presentation"; done: false; isEditing: false }
                     }
 
                     delegate: Item {
@@ -525,9 +525,45 @@ PlasmoidItem {
                                 }
                             }
 
+                            PlasmaComponents.TextField {
+                                id: editField
+                                Layout.fillWidth: true
+                                visible: model.isEditing
+                                text: model.taskName
+                                placeholderText: i18n("Task name...")
+                                font.pixelSize: Kirigami.Units.gridUnit * 0.7
+                                
+                                Timer {
+                                    id: focusTimer
+                                    interval: 50
+                                    onTriggered: {
+                                        editField.forceActiveFocus();
+                                        editField.selectAll();
+                                    }
+                                }
+                                
+                                Component.onCompleted: {
+                                    if (model.isEditing) {
+                                        focusTimer.start();
+                                    }
+                                }
+                                
+                                onEditingFinished: {
+                                    if (model.isEditing) {
+                                        if (text.trim() === "") {
+                                            taskModel.remove(index);
+                                        } else {
+                                            taskModel.setProperty(index, "taskName", text);
+                                            taskModel.setProperty(index, "isEditing", false);
+                                        }
+                                    }
+                                }
+                            }
+
                             PlasmaComponents.Label {
                                 id: taskLabel
                                 Layout.fillWidth: true
+                                visible: !model.isEditing
                                 text: model.taskName
                                 font.pixelSize: Kirigami.Units.gridUnit * 0.7
                                 font.strikeout: model.done
@@ -556,6 +592,7 @@ PlasmoidItem {
                             id: mouseArea
                             anchors.fill: parent
                             hoverEnabled: true
+                            enabled: !model.isEditing
                             onClicked: checkDelegate.toggle()
                             z: -1
                         }
@@ -623,7 +660,8 @@ PlasmoidItem {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                taskModel.append({ taskName: i18n("New Task"), done: false });
+                                taskModel.append({ taskName: "", done: false, isEditing: true });
+                                taskList.positionViewAtEnd();
                             }
                         }
                     }
