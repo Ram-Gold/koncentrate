@@ -615,6 +615,7 @@ PlasmoidItem {
                     property int draggingIndex: -1
                     property int targetIndex: -1
                     property int hoveredGroupIndex: -1
+                    property int dropMode: 0 // 0: None, 1: Top, 2: Bottom, 3: Center
                     property bool isDropAtEnd: false
                     
                     model: taskModel
@@ -636,36 +637,39 @@ PlasmoidItem {
                         Behavior on opacity { NumberAnimation { duration: 250 } }
                         Behavior on opacity { NumberAnimation { duration: 200 } }
                         
-                        // Drop Indicator Line (Top)
+                        // Top Indicator
                         Rectangle {
-                            id: dropIndicatorTop
-                            width: parent.width
+                            id: topIndicator
+                            width: parent.width - Kirigami.Units.gridUnit
                             height: 2
                             color: root.phaseColor
-                            z: 20
                             anchors.top: parent.top
-                            opacity: (taskList.draggingIndex !== -1 && taskList.targetIndex === index && !taskList.isDropAtEnd) ? 1.0 : 0.0
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            opacity: (taskList.draggingIndex !== -1 && taskList.targetIndex === index && taskList.dropMode === 1) ? 1.0 : 0.0
                             visible: opacity > 0
+                            z: 20
                             Behavior on opacity { NumberAnimation { duration: 150 } }
                         }
 
-                        // Drop Indicator Line (Bottom - only for last item)
+                        // Bottom Indicator
                         Rectangle {
-                            id: dropIndicatorBottom
-                            width: parent.width
+                            id: bottomIndicator
+                            width: parent.width - Kirigami.Units.gridUnit
                             height: 2
                             color: root.phaseColor
-                            z: 20
                             anchors.bottom: parent.bottom
-                            opacity: (taskList.draggingIndex !== -1 && taskList.targetIndex === index + 1 && taskList.isDropAtEnd && index === taskModel.count - 1) ? 1.0 : 0.0
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            opacity: (taskList.draggingIndex !== -1 && taskList.targetIndex === index && taskList.dropMode === 2) ? 1.0 : 0.0
                             visible: opacity > 0
+                            z: 20
                             Behavior on opacity { NumberAnimation { duration: 150 } }
                         }
 
-                        // Group Nesting Indicator (Outline)
+                        // Group Center (Nesting) Indicator
                         Rectangle {
-                            id: groupBorderIndicator
+                            id: centerIndicator
                             anchors.fill: parent
+                            anchors.margins: 2
                             border.width: 2
                             border.color: root.phaseColor
                             color: "transparent"
@@ -724,85 +728,81 @@ PlasmoidItem {
                                     onPressed: (mouse) => {
                                         taskList.draggingIndex = index;
                                     }
-                                    
-                                    onPositionChanged: (mouse) => {
+                                                               onPositionChanged: (mouse) => {
                                         if (taskList.draggingIndex !== -1) {
                                             var pos = mapToItem(taskList, mouse.x, mouse.y);
-                                            var target = taskList.indexAt(pos.x, pos.y + taskList.contentY);
+                                            var scrollPosY = pos.y + taskList.contentY;
+                                            var target = taskList.indexAt(pos.x, scrollPosY);
                                             
-                                            if (target !== -1) {
+                                            if (target === -1 && pos.y > 0) {
+                                                // Draging below last item
+                                                taskList.targetIndex = taskModel.count - 1;
+                                                taskList.dropMode = 2; // Bottom of last item
+                                                taskList.hoveredGroupIndex = -1;
+                                            } else if (target !== -1) {
                                                 var targetItem = taskModel.get(target);
-                                                var delPos = mapToItem(taskDelegate, mouse.x, mouse.y);
-                                                var hoverY = delPos.y;
-                                                var h = taskDelegate.height;
+                                                var itemH = taskDelegate.height;
+                                                var relY = scrollPosY % itemH;
                                                 
-                                                taskList.isDropAtEnd = false; // Default
-                                                
-                                                if (hoverY < h * 0.3) {
-                                                    // Top 30%: Move Before
-                                                    taskList.targetIndex = target;
-                                                    taskList.hoveredGroupIndex = -1;
-                                                } else if (hoverY > h * 0.7) {
-                                                    // Bottom 30%: Move After
-                                                    taskList.targetIndex = target + 1;
-                                                    taskList.hoveredGroupIndex = -1;
-                                                    if (target === taskModel.count - 1) {
-                                                        taskList.isDropAtEnd = true;
-                                                    }
-                                                } else {
-                                                    // Center 40%: Nest into groups, or ignore for tasks
-                                                    if (targetItem.type === "group") {
+                                                if (targetItem.type === "group") {
+                                                    if (relY < itemH * 0.25) {
+                                                        taskList.dropMode = 1; // Top
+                                                        taskList.targetIndex = target;
+                                                        taskList.hoveredGroupIndex = -1;
+                                                    } else if (relY > itemH * 0.75) {
+                                                        taskList.dropMode = 2; // Bottom
+                                                        taskList.targetIndex = target;
+                                                        taskList.hoveredGroupIndex = -1;
+                                                    } else {
+                                                        taskList.dropMode = 3; // Center (Nest)
                                                         taskList.hoveredGroupIndex = target;
                                                         taskList.targetIndex = -1;
-                                                    } else {
-                                                        taskList.hoveredGroupIndex = -1;
-                                                        taskList.targetIndex = -1;
                                                     }
+                                                } else {
+                                                    // For tasks, no "center" nesting
+                                                    taskList.hoveredGroupIndex = -1;
+                                                    taskList.targetIndex = target;
+                                                    taskList.dropMode = (relY < itemH / 2) ? 1 : 2;
                                                 }
-                                            } else if (pos.y > 0) {
-                                                // Draging below the last item
-                                                taskList.targetIndex = taskModel.count;
-                                                taskList.isDropAtEnd = true;
-                                                taskList.hoveredGroupIndex = -1;
                                             }
                                         }
                                     }
                                     
                                     onReleased: (mouse) => {
                                         if (taskList.draggingIndex !== -1) {
-                                            if (taskList.hoveredGroupIndex !== -1) {
-                                                // Drop onto Group: set as sub-task and move to top of group
-                                                taskModel.setProperty(taskList.draggingIndex, "isSubTask", true);
-                                                taskModel.move(taskList.draggingIndex, taskList.hoveredGroupIndex + 1, 1);
+                                            let dragIdx = taskList.draggingIndex;
+                                            
+                                            if (taskList.dropMode === 3 && taskList.hoveredGroupIndex !== -1) {
+                                                // Nest into group
+                                                taskModel.setProperty(dragIdx, "isSubTask", true);
+                                                taskModel.move(dragIdx, taskList.hoveredGroupIndex + 1, 1);
                                             } else if (taskList.targetIndex !== -1) {
-                                                let targetIndex = taskList.targetIndex;
-                                                let draggingIndex = taskList.draggingIndex;
-                                                var draggedItem = taskModel.get(draggingIndex);
+                                                let targetIdx = taskList.targetIndex;
+                                                let finalDest = (taskList.dropMode === 2) ? targetIdx + 1 : targetIdx;
                                                 
+                                                // Handle self-move offset
+                                                if (dragIdx < finalDest) finalDest -= 1;
+                                                
+                                                var draggedItem = taskModel.get(dragIdx);
                                                 if (draggedItem.type === "task") {
-                                                    var targetIndent = false;
-                                                    // Intuitive "Escape": If dropped at the very bottom of the list, it flattens
-                                                    if (targetIndex < taskModel.count - 1 || taskModel.count === 1) {
-                                                        if (targetIndex > 0) {
-                                                            var checkIndex = targetIndex > draggingIndex ? targetIndex : targetIndex - 1;
-                                                            var prevItem = taskModel.get(checkIndex);
-                                                            if (prevItem && (prevItem.type === "group" || prevItem.isSubTask)) {
-                                                                targetIndent = true;
-                                                            }
+                                                    // Determine auto-indent based on neighbor
+                                                    var checkIdx = (taskList.dropMode === 2) ? targetIdx : targetIdx - 1;
+                                                    var indent = false;
+                                                    if (checkIdx >= 0 && checkIdx < taskModel.count) {
+                                                        var neighbor = taskModel.get(checkIdx);
+                                                        if (neighbor && (neighbor.type === "group" || neighbor.isSubTask)) {
+                                                            indent = true;
                                                         }
-                                                    } else {
-                                                        // Dropped at the very last slot: flatten
-                                                        targetIndent = false;
                                                     }
-                                                    taskModel.setProperty(draggingIndex, "isSubTask", targetIndent);
+                                                    taskModel.setProperty(dragIdx, "isSubTask", indent);
                                                 }
-                                                // Move item
-                                                taskModel.move(draggingIndex, targetIndex, 1);
+                                                taskModel.move(dragIdx, finalDest, 1);
                                             }
                                         }
                                         taskList.draggingIndex = -1;
                                         taskList.targetIndex = -1;
                                         taskList.hoveredGroupIndex = -1;
+                                        taskList.dropMode = 0;
                                     }
                                 }
                             }
