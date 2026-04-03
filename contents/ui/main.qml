@@ -26,6 +26,12 @@ PlasmoidItem {
     property int initialSeconds: focusTime
     // @CONFIG_END
 
+    property color phaseColor: {
+        if (stateVal === (numberOfSessions * 2)) return "#2196F3" // Blue (Long Break)
+        if (isBreak()) return "#4CAF50" // Green (Short Break)
+        return "#F44336" // Red (Pomodoro)
+    }
+
     // @LOGIC_ENGINE: Timer state machine and formatting
     function formatTime(totalSeconds) {
         let hours = Math.floor(totalSeconds / 3600);
@@ -130,7 +136,7 @@ PlasmoidItem {
                 source: "timer"
                 implicitWidth: Kirigami.Units.iconSizes.smallMedium
                 implicitHeight: Kirigami.Units.iconSizes.smallMedium
-                color: isBreak() ? Kirigami.Theme.neutralColor : Kirigami.Theme.highlightColor
+                color: root.phaseColor
             }
 
             PlasmaComponents.Label {
@@ -175,7 +181,7 @@ PlasmoidItem {
                     implicitWidth: content.width + (Kirigami.Units.smallSpacing * 4)
                     implicitHeight: Kirigami.Units.gridUnit * 1.2
                     radius: height / 2
-                    color: active ? Kirigami.Theme.highlightColor : (mouseArea.containsMouse ? Kirigami.Theme.hoverColor : "transparent")
+                    color: active ? root.phaseColor : (mouseArea.containsMouse ? Kirigami.Theme.hoverColor : "transparent")
                     border.width: active ? 0 : 1
                     border.color: Kirigami.Theme.disabledTextColor
                     opacity: active ? 1.0 : (mouseArea.containsMouse ? 0.8 : 0.6)
@@ -248,7 +254,7 @@ PlasmoidItem {
 
                         ctx.beginPath();
                         ctx.globalAlpha = 1.0;
-                        ctx.strokeStyle = isBreak() ? Kirigami.Theme.neutralColor : Kirigami.Theme.highlightColor;
+                        ctx.strokeStyle = root.phaseColor;
                         ctx.arc(centerX, centerY, radius, -Math.PI / 2, (-Math.PI / 2) + (2 * Math.PI * progress));
                         ctx.stroke();
                     }
@@ -372,7 +378,7 @@ PlasmoidItem {
                     implicitWidth: Kirigami.Units.gridUnit * 2.8
                     implicitHeight: implicitWidth
                     radius: width / 2
-                    color: Kirigami.Theme.highlightColor
+                    color: root.phaseColor
                     
                     Kirigami.Icon {
                         anchors.centerIn: parent
@@ -474,9 +480,6 @@ PlasmoidItem {
                     
                     model: ListModel {
                         id: taskModel
-                        ListElement { taskName: "Reading \"Busy Doing Nothing\""; done: false; isEditing: false }
-                        ListElement { taskName: "Taking Notes"; done: false; isEditing: false }
-                        ListElement { taskName: "Make Presentation"; done: false; isEditing: false }
                     }
 
                     delegate: Item {
