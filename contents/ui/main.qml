@@ -568,29 +568,6 @@ PlasmoidItem {
                     
                     Item { Layout.fillWidth: true } // Spacer
                     
-                    // Presets Button
-                    Rectangle {
-                        implicitWidth: presetLabel.width + Kirigami.Units.gridUnit * 0.8
-                        implicitHeight: Kirigami.Units.gridUnit * 1.1
-                        radius: height / 2
-                        color: "transparent"
-                        border.color: Kirigami.Theme.textColor
-                        border.width: 1
-                        opacity: 0.8
-                        
-                        PlasmaComponents.Label {
-                            id: presetLabel
-                            anchors.centerIn: parent
-                            text: i18n("Presets")
-                            font.pixelSize: Kirigami.Units.gridUnit * 0.65
-                        }
-                        
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: console.log("Presets clicked")
-                        }
-                    }
                 }
 
                 // Header Separator
@@ -692,6 +669,8 @@ PlasmoidItem {
 
                             RowLayout {
                                 anchors.fill: parent
+                                anchors.topMargin: connectsToPrev ? 4 : 0
+                                anchors.bottomMargin: connectsToNext ? (cardBackground.radius + 2) : 0
                                 anchors.leftMargin: Kirigami.Units.largeSpacing
                                 anchors.rightMargin: Kirigami.Units.smallSpacing
                                 spacing: Kirigami.Units.smallSpacing
