@@ -591,7 +591,7 @@ PlasmoidItem {
                     property bool isGroup: dataModel.type === "group"
                     
                     width: listObj.width
-                    height: Kirigami.Units.gridUnit * 2.4 + Kirigami.Units.smallSpacing
+                    height: Kirigami.Units.gridUnit * 2.0 + Kirigami.Units.smallSpacing
                     
                     clip: false 
                     
