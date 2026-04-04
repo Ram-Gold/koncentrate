@@ -22,5 +22,8 @@
     <entry name="playChime" type="Bool">
       <default>true</default>
     </entry>
+    <entry name="tasks" type="String">
+      <default>[]</default>
+    </entry>
   </group>
 </kcfg>

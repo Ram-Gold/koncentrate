@@ -53,9 +53,12 @@ Right-click the widget and select **Configure** to customize:
 ---
 
 ## 📸 Preview
-No Preview Yet
+
+See the [screenshots](./screenshots) folder for visual demonstrations of the widget in action.
+
 ---
 
 ## 📄 License
 
-MIT License — feel free to use, modify, and share.
+This project is licensed under the [GNU General Public License v3.0](./LICENSE).
+

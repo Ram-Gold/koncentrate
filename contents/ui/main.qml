@@ -40,11 +40,45 @@ PlasmoidItem {
     // @MODEL: Task & Group Data (Tree Structure)
     property var taskTree: []
     
+    Component.onCompleted: {
+        if (plasmoid.configuration.tasks && plasmoid.configuration.tasks !== "[]") {
+            try {
+                taskTree = JSON.parse(plasmoid.configuration.tasks);
+            } catch (e) {
+                console.error("Failed to load tasks:", e);
+                taskTree = [];
+            }
+        }
+    }
+
+    function saveTasks() {
+        if (!taskTree) return;
+        
+        // Deep copy and clean temporary UI state
+        let cleanTree = JSON.parse(JSON.stringify(taskTree)).filter(item => {
+            // Skip new items that were never named
+            if (item.isEditing && !item.taskName) return false;
+            
+            delete item.isEditing;
+            if (item.type === "group" && item.children) {
+                item.children = item.children.filter(child => {
+                    if (child.isEditing && !child.taskName) return false;
+                    delete child.isEditing;
+                    return true;
+                });
+            }
+            return true;
+        });
+        
+        plasmoid.configuration.tasks = JSON.stringify(cleanTree);
+    }
+
     function refreshTree() {
         var temp = taskTree;
         taskTree = [];
         taskTree = temp;
         taskTreeChanged();
+        saveTasks();
     }
 
     // @LOGIC_ENGINE: Timer state machine and formatting
