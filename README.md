@@ -1,10 +1,11 @@
+![Banner](./screenshots/Koncentrate_banner.png)
 # 🍅 Koncentrate
 
 A **KDE Plasma 6 widget** that combines a Pomodoro timer with a built-in To-Do List - so you can manage your tasks and stay focused, all from your desktop.
 
 ---
 
-## ✨ Features
+## Features
 
 ### Pomodoro Timer
 - **Three modes** — Pomodoro (Focus), Short Break, and Long Break
@@ -24,7 +25,7 @@ A **KDE Plasma 6 widget** that combines a Pomodoro timer with a built-in To-Do L
 
 ---
 
-## 🖥️ Requirements
+## Requirements
 
 - KDE Plasma 6
 - Qt 6 with QtQuick, QtMultimedia
@@ -32,7 +33,7 @@ A **KDE Plasma 6 widget** that combines a Pomodoro timer with a built-in To-Do L
 
 ---
 
-## 🚀 Installation
+## Installation
 
 1. Clone or download this repository.
 2. Place the widget folder in your Plasma plasmoids directory:
@@ -43,7 +44,7 @@ A **KDE Plasma 6 widget** that combines a Pomodoro timer with a built-in To-Do L
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 Right-click the widget and select **Configure** to customize:
 - Focus, Short Break, and Long Break durations
@@ -52,13 +53,17 @@ Right-click the widget and select **Configure** to customize:
 
 ---
 
-## 📸 Preview
+## Preview
 
-See the [screenshots](./screenshots) folder for visual demonstrations of the widget in action.
+![Preview](./screenshots/screenshots.png)
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the [GNU General Public License v3.0](./LICENSE).
 
+---
+### inspirations:
+- [Fokus Plasmoid](https://gitlab.com/divinae/focus-plasmoid)
+- Virtual Cottage 2
