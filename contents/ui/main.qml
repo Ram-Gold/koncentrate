@@ -622,6 +622,118 @@ PlasmoidItem {
                     property var mainRoot
                     property var listObj
                     
+                    readonly property string _effectiveColorCode: dataModel.backgroundColor ? dataModel.backgroundColor : (subIndex !== -1 && mainRoot.taskTree[rootIndex] ? (mainRoot.taskTree[rootIndex].backgroundColor || "") : "")
+                    readonly property color effectiveTintColor: _effectiveColorCode ? _effectiveColorCode : Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.1)
+                    readonly property color effectiveColor: _effectiveColorCode ? _effectiveColorCode.replace("#40", "#ff") : mainRoot.phaseColor
+                    
+                    QQC2.Menu {
+                        id: colorMenu
+                        QQC2.MenuItem {
+                            text: i18n("Default")
+                            onClicked: mainRoot.setTaskProperty(rootIndex, subIndex, "backgroundColor", "")
+                        }
+                        QQC2.MenuSeparator {}
+                        QQC2.MenuItem {
+                            text: i18n("Red")
+                            contentItem: RowLayout {
+                                spacing: Kirigami.Units.smallSpacing
+                                Rectangle { width: 12; height: 12; radius: 6; color: "#ff6b6b"; opacity: 0.5 }
+                                PlasmaComponents.Label { text: i18n("Red"); Layout.fillWidth: true }
+                            }
+                            onClicked: mainRoot.setTaskProperty(rootIndex, subIndex, "backgroundColor", "#40ff6b6b")
+                        }
+                        QQC2.MenuItem {
+                            text: i18n("Green")
+                            contentItem: RowLayout {
+                                spacing: Kirigami.Units.smallSpacing
+                                Rectangle { width: 12; height: 12; radius: 6; color: "#51cf66"; opacity: 0.5 }
+                                PlasmaComponents.Label { text: i18n("Green"); Layout.fillWidth: true }
+                            }
+                            onClicked: mainRoot.setTaskProperty(rootIndex, subIndex, "backgroundColor", "#4051cf66")
+                        }
+                        QQC2.MenuItem {
+                            text: i18n("Blue")
+                            contentItem: RowLayout {
+                                spacing: Kirigami.Units.smallSpacing
+                                Rectangle { width: 12; height: 12; radius: 6; color: "#339af0"; opacity: 0.5 }
+                                PlasmaComponents.Label { text: i18n("Blue"); Layout.fillWidth: true }
+                            }
+                            onClicked: mainRoot.setTaskProperty(rootIndex, subIndex, "backgroundColor", "#40339af0")
+                        }
+                        QQC2.MenuItem {
+                            text: i18n("Yellow")
+                            contentItem: RowLayout {
+                                spacing: Kirigami.Units.smallSpacing
+                                Rectangle { width: 12; height: 12; radius: 6; color: "#fcc419"; opacity: 0.5 }
+                                PlasmaComponents.Label { text: i18n("Yellow"); Layout.fillWidth: true }
+                            }
+                            onClicked: mainRoot.setTaskProperty(rootIndex, subIndex, "backgroundColor", "#40fcc419")
+                        }
+                        QQC2.MenuItem {
+                            text: i18n("Purple")
+                            contentItem: RowLayout {
+                                spacing: Kirigami.Units.smallSpacing
+                                Rectangle { width: 12; height: 12; radius: 6; color: "#ae3ec9"; opacity: 0.5 }
+                                PlasmaComponents.Label { text: i18n("Purple"); Layout.fillWidth: true }
+                            }
+                            onClicked: mainRoot.setTaskProperty(rootIndex, subIndex, "backgroundColor", "#40ae3ec9")
+                        }
+                        QQC2.MenuItem {
+                            text: i18n("Orange")
+                            contentItem: RowLayout {
+                                spacing: Kirigami.Units.smallSpacing
+                                Rectangle { width: 12; height: 12; radius: 6; color: "#f76707"; opacity: 0.5 }
+                                PlasmaComponents.Label { text: i18n("Orange"); Layout.fillWidth: true }
+                            }
+                            onClicked: mainRoot.setTaskProperty(rootIndex, subIndex, "backgroundColor", "#40f76707")
+                        }
+                        QQC2.MenuItem {
+                            text: i18n("Teal")
+                            contentItem: RowLayout {
+                                spacing: Kirigami.Units.smallSpacing
+                                Rectangle { width: 12; height: 12; radius: 6; color: "#08979c"; opacity: 0.5 }
+                                PlasmaComponents.Label { text: i18n("Teal"); Layout.fillWidth: true }
+                            }
+                            onClicked: mainRoot.setTaskProperty(rootIndex, subIndex, "backgroundColor", "#4008979c")
+                        }
+                        QQC2.MenuItem {
+                            text: i18n("Pink")
+                            contentItem: RowLayout {
+                                spacing: Kirigami.Units.smallSpacing
+                                Rectangle { width: 12; height: 12; radius: 6; color: "#d6336c"; opacity: 0.5 }
+                                PlasmaComponents.Label { text: i18n("Pink"); Layout.fillWidth: true }
+                            }
+                            onClicked: mainRoot.setTaskProperty(rootIndex, subIndex, "backgroundColor", "#40d6336c")
+                        }
+                        QQC2.MenuItem {
+                            text: i18n("Indigo")
+                            contentItem: RowLayout {
+                                spacing: Kirigami.Units.smallSpacing
+                                Rectangle { width: 12; height: 12; radius: 6; color: "#4263eb"; opacity: 0.5 }
+                                PlasmaComponents.Label { text: i18n("Indigo"); Layout.fillWidth: true }
+                            }
+                            onClicked: mainRoot.setTaskProperty(rootIndex, subIndex, "backgroundColor", "#404263eb")
+                        }
+                        QQC2.MenuItem {
+                            text: i18n("Brown")
+                            contentItem: RowLayout {
+                                spacing: Kirigami.Units.smallSpacing
+                                Rectangle { width: 12; height: 12; radius: 6; color: "#8d6e63"; opacity: 0.5 }
+                                PlasmaComponents.Label { text: i18n("Brown"); Layout.fillWidth: true }
+                            }
+                            onClicked: mainRoot.setTaskProperty(rootIndex, subIndex, "backgroundColor", "#408d6e63")
+                        }
+                        QQC2.MenuItem {
+                            text: i18n("Gray")
+                            contentItem: RowLayout {
+                                spacing: Kirigami.Units.smallSpacing
+                                Rectangle { width: 12; height: 12; radius: 6; color: "#495057"; opacity: 0.5 }
+                                PlasmaComponents.Label { text: i18n("Gray"); Layout.fillWidth: true }
+                            }
+                            onClicked: mainRoot.setTaskProperty(rootIndex, subIndex, "backgroundColor", "#40495057")
+                        }
+                    }
+                    
                     property bool isGroup: dataModel.type === "group"
                     
                     width: listObj.width
@@ -688,7 +800,7 @@ PlasmoidItem {
                             anchors.topMargin: connectsToPrev ? -(radius + 2) : 0
                             anchors.bottomMargin: connectsToNext ? -(radius + 2) : 0
                             radius: 12
-                            color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.1)
+                            color: cardItem.effectiveTintColor
                             border.width: 1
                             border.color: color
                             Behavior on color { ColorAnimation { duration: 200 } }
@@ -713,7 +825,7 @@ PlasmoidItem {
                                     text: "⣿"
                                     font.pixelSize: Kirigami.Units.gridUnit * 0.8
                                     opacity: 0.3
-                                    visible: !isGroup
+                                    visible: true
                                     Layout.alignment: Qt.AlignVCenter
                                     Layout.leftMargin: (subIndex !== -1) ? Kirigami.Units.gridUnit : 0
                                     
@@ -721,7 +833,7 @@ PlasmoidItem {
                                         id: grabMouseArea
                                         anchors.fill: parent
                                         cursorShape: Qt.PointingHandCursor
-                                        enabled: !isGroup
+                                        enabled: true
                                         
                                         onPressed: (mouse) => {
                                             listObj.draggingRootIndex = rootIndex;
@@ -770,8 +882,8 @@ PlasmoidItem {
                                         implicitWidth: Kirigami.Units.gridUnit * 1.0
                                         implicitHeight: Kirigami.Units.gridUnit * 1.0
                                         radius: 4
-                                        color: checkDelegate.checked ? mainRoot.phaseColor : "transparent"
-                                        border.color: checkDelegate.checked ? mainRoot.phaseColor : Kirigami.Theme.textColor
+                                        color: checkDelegate.checked ? cardItem.effectiveColor : "transparent"
+                                        border.color: checkDelegate.checked ? cardItem.effectiveColor : Kirigami.Theme.textColor
                                         border.width: 1
                                         opacity: checkDelegate.checked ? 1.0 : 0.4
                                         Behavior on color { ColorAnimation { duration: 200 } }
@@ -791,7 +903,7 @@ PlasmoidItem {
                                     implicitWidth: Kirigami.Units.gridUnit * 1.0
                                     implicitHeight: Kirigami.Units.gridUnit * 1.0
                                     visible: isGroup
-                                    color: mainRoot.phaseColor
+                                    color: cardItem.effectiveColor
                                     opacity: 0.8
                                     Layout.alignment: Qt.AlignVCenter
                                     MouseArea {
@@ -889,8 +1001,13 @@ PlasmoidItem {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 enabled: !dataModel.isEditing
-                                onClicked: {
-                                    if (!isGroup) mainRoot.setTaskProperty(rootIndex, subIndex, "done", !dataModel.done);
+                                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                onClicked: (mouse) => {
+                                    if (mouse.button === Qt.RightButton) {
+                                        colorMenu.popup();
+                                    } else if (mouse.button === Qt.LeftButton && !isGroup) {
+                                        mainRoot.setTaskProperty(rootIndex, subIndex, "done", !dataModel.done);
+                                    }
                                 }
                                 z: -1
                             }
@@ -921,7 +1038,7 @@ PlasmoidItem {
                     model: root.taskTree
 
                     function getDropTarget(yOffset, sR, sS) {
-                        var H = Kirigami.Units.gridUnit * 2.4 + Kirigami.Units.smallSpacing;
+                        var H = Kirigami.Units.gridUnit * 2.0 + Kirigami.Units.smallSpacing;
                         var currentY = 0;
                         
                         var draggedIsGroup = false;
