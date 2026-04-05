@@ -679,7 +679,7 @@ PlasmoidItem {
                         anchors.fill: parent
                         anchors.topMargin: connectsToPrev ? 0 : Kirigami.Units.smallSpacing / 2
                         anchors.bottomMargin: connectsToNext ? 0 : Kirigami.Units.smallSpacing / 2
-                        anchors.rightMargin: Kirigami.Units.gridUnit / 2
+                        anchors.rightMargin: 0
                         clip: true
 
                         Rectangle {
@@ -1068,19 +1068,7 @@ PlasmoidItem {
                         opacity: 0.2
                     }
                     
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: Kirigami.Units.gridUnit * 1.5
-                        height: Kirigami.Units.gridUnit * 0.6
-                        color: Kirigami.Theme.backgroundColor
-                        
-                        PlasmaComponents.Label {
-                            anchors.centerIn: parent
-                            text: "="
-                            font.bold: true
-                            opacity: 0.4
-                        }
-                    }
+
                 }
 
                 // Footer Actions
