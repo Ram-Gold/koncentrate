@@ -731,6 +731,13 @@ PlasmoidItem {
                     property string localBackgroundColor: dataModel.backgroundColor || ""
                     property bool localIsCollapsed: dataModel.isCollapsed || false
                     property string localDeadline: dataModel.deadline || ""
+                    property int selectedMonth: {
+                        if (localDeadline) {
+                            let parts = localDeadline.split(" ")[0].split("/");
+                            return parseInt(parts[0]) || 0;
+                        }
+                        return 0;
+                    }
                     property string parentBgColor: (subIndex !== -1 && mainRoot.taskTree[rootIndex]) ? (mainRoot.taskTree[rootIndex].backgroundColor || "") : ""
                     
                     onDataModelChanged: {
@@ -883,22 +890,21 @@ PlasmoidItem {
                         } else {
                             mainRoot.setTaskProperty(rootIndex, subIndex, "taskName", editField.text);
                             if (!isGroup) {
-                                let m = deadlineMonthInput.text.trim();
+                                let m = cardItem.selectedMonth;
                                 let d = deadlineDayInput.text.trim();
                                 let h = deadlineHourInput.text.trim();
                                 let min = deadlineMinuteInput.text.trim();
-                                if (m !== "" && d !== "") {
-                                    let mVal = parseInt(m) || 0;
+                                if (m > 0 && d !== "") {
+                                    let mVal = Math.max(1, Math.min(12, m));
                                     let dVal = parseInt(d) || 0;
                                     let hVal = parseInt(h) || 0;
                                     let minVal = parseInt(min) || 0;
-                                    mVal = Math.max(1, Math.min(12, mVal));
                                     dVal = Math.max(1, Math.min(31, dVal));
                                     hVal = Math.max(0, Math.min(23, hVal));
                                     minVal = Math.max(0, Math.min(59, minVal));
                                     let deadlineStr = mVal.toString().padStart(2, '0') + "/" + dVal.toString().padStart(2, '0') + " " + hVal.toString().padStart(2, '0') + ":" + minVal.toString().padStart(2, '0');
                                     mainRoot.setTaskProperty(rootIndex, subIndex, "deadline", deadlineStr);
-                                } else if (m === "" && d === "") {
+                                } else if (m === 0 && d === "") {
                                     // Clear deadline if both month and day are empty
                                     mainRoot.setTaskProperty(rootIndex, subIndex, "deadline", "");
                                 }
@@ -1109,8 +1115,8 @@ PlasmoidItem {
                                     Component.onCompleted: { if (localIsEditing) focusTimer.start(); }
                                     onEditingFinished: {
                                         if (localIsEditing) {
-                                            // Don't close if focus moved to a deadline input
-                                            if (!isGroup && (deadlineMonthInput.activeFocus || deadlineDayInput.activeFocus || deadlineHourInput.activeFocus || deadlineMinuteInput.activeFocus)) return;
+                                            // Don't close if focus moved to a deadline input or month dropdown
+                                            if (!isGroup && (monthDropdownPopup.visible || deadlineDayInput.activeFocus || deadlineHourInput.activeFocus || deadlineMinuteInput.activeFocus)) return;
                                             cardItem.commitEdit();
                                         }
                                     }
@@ -1146,40 +1152,92 @@ PlasmoidItem {
                                         spacing: Kirigami.Units.smallSpacing / 2
 
                                         Rectangle {
-                                            width: deadlineBadgeLabel.implicitWidth + Kirigami.Units.smallSpacing * 3
+                                            width: pillRow.implicitWidth + Kirigami.Units.smallSpacing * 3
                                             height: Kirigami.Units.gridUnit * 0.85
                                             radius: height / 2
                                             color: {
                                                 if (!localDeadline) return "transparent";
-                                                let parts = localDeadline.split(" ");
-                                                if (parts.length < 2) return Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.15);
-                                                let dateParts = parts[0].split("/");
-                                                if (dateParts.length < 2) return Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.15);
-                                                let now = new Date();
-                                                let deadlineDate = new Date(now.getFullYear(), parseInt(dateParts[0]) - 1, parseInt(dateParts[1]));
-                                                if (parts[1]) {
-                                                    let timeParts = parts[1].split(":");
-                                                    deadlineDate.setHours(parseInt(timeParts[0]) || 0, parseInt(timeParts[1]) || 0);
-                                                }
-                                                let diff = deadlineDate.getTime() - now.getTime();
-                                                if (diff < 0) return Qt.rgba(1, 0.42, 0.42, 0.25);
-                                                if (diff < 86400000) return Qt.rgba(1, 0.77, 0.1, 0.25);
                                                 return Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.15);
                                             }
 
-                                            PlasmaComponents.Label {
-                                                id: deadlineBadgeLabel
-                                                anchors.centerIn: parent
-                                                text: {
-                                                    if (!cardItem.localDeadline) return "";
-                                                    let parts = cardItem.localDeadline.split(" ");
+                                            QtObject {
+                                                id: deadlineData
+                                                property string dateStr: ""
+                                                property string timeStr: ""
+                                                property string rawStr: cardItem.localDeadline
+
+                                                onRawStrChanged: update()
+                                                Component.onCompleted: update()
+
+                                                function update() {
+                                                    if (!rawStr) { dateStr = ""; timeStr = ""; return; }
+                                                    let parts = rawStr.split(" ");
                                                     let datePart = parts[0] || "";
                                                     let timePart = parts[1] || "";
-                                                    if (timePart === "00:00") return datePart;
-                                                    return cardItem.localDeadline;
+                                                    let dateParts = datePart.split("/");
+                                                    if (dateParts.length < 2) { dateStr = rawStr; timeStr = ""; return; }
+
+                                                    let monthNum = parseInt(dateParts[0]);
+                                                    let dayNum = parseInt(dateParts[1]);
+                                                    let monthNames = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                                                    let dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+                                                    let now = new Date();
+                                                    let deadlineDate = new Date(now.getFullYear(), monthNum - 1, dayNum);
+                                                    
+                                                    if (timePart && timePart !== "00:00") {
+                                                        let tHour = parseInt(timePart.split(":")[0]) || 0;
+                                                        let tMin = (parseInt(timePart.split(":")[1]) || 0).toString().padStart(2, '0');
+                                                        timeStr = tHour + ":" + tMin;
+                                                    } else {
+                                                        timeStr = "";
+                                                    }
+
+                                                    let todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                                                    let deadlineDayStart = new Date(deadlineDate.getFullYear(), deadlineDate.getMonth(), deadlineDate.getDate());
+                                                    let dayDiff = Math.round((deadlineDayStart.getTime() - todayStart.getTime()) / 86400000);
+
+                                                    if (dayDiff === 0) { dateStr = "Today"; return; }
+                                                    if (dayDiff === 1) { dateStr = "Tomorrow"; return; }
+                                                    if (dayDiff > 1 && dayDiff <= 7) { dateStr = dayNames[deadlineDate.getDay()]; return; }
+
+                                                    dateStr = (monthNames[monthNum] || datePart) + " " + dayNum;
                                                 }
-                                                font.pixelSize: Kirigami.Units.gridUnit * 0.55
-                                                opacity: 0.65
+                                            }
+
+                                            RowLayout {
+                                                id: pillRow
+                                                anchors.centerIn: parent
+                                                spacing: Kirigami.Units.smallSpacing * 0.8
+
+                                                PlasmaComponents.Label {
+                                                    text: deadlineData.dateStr
+                                                    font.pixelSize: Kirigami.Units.gridUnit * 0.55
+                                                    opacity: 0.65
+                                                    visible: text !== ""
+                                                }
+
+                                                Rectangle {
+                                                    width: 1
+                                                    height: Kirigami.Units.gridUnit * 0.45
+                                                    color: Kirigami.Theme.textColor
+                                                    opacity: 0.3
+                                                    visible: deadlineData.dateStr !== "" && deadlineData.timeStr !== ""
+                                                    Layout.alignment: Qt.AlignVCenter
+                                                }
+
+                                                PlasmaComponents.Label {
+                                                    text: deadlineData.timeStr
+                                                    font.pixelSize: Kirigami.Units.gridUnit * 0.55
+                                                    opacity: 0.65
+                                                    visible: text !== ""
+                                                }
+                                            }
+                                            
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: mainRoot.setTaskProperty(rootIndex, subIndex, "isEditing", true)
                                             }
                                         }
 
@@ -1246,42 +1304,121 @@ PlasmoidItem {
                                     Layout.alignment: Qt.AlignVCenter
                                 }
 
-                                // Month input
+                                // Month dropdown
                                 Rectangle {
-                                    implicitWidth: Kirigami.Units.gridUnit * 1.6
+                                    id: monthDropdownField
+                                    implicitWidth: Kirigami.Units.gridUnit * 1.8
                                     implicitHeight: Kirigami.Units.gridUnit * 1.2
                                     color: "transparent"
                                     border.width: 0
+
+                                    property var monthNames: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
                                     Rectangle {
                                         anchors.bottom: parent.bottom
                                         anchors.horizontalCenter: parent.horizontalCenter
                                         width: parent.width - 4
                                         height: 1
                                         color: Kirigami.Theme.textColor
-                                        opacity: deadlineMonthInput.activeFocus ? 0.6 : 0.2
+                                        opacity: monthDropdownPopup.visible || monthKeyInput.activeFocus ? 0.6 : 0.2
                                         Behavior on opacity { NumberAnimation { duration: 150 } }
                                     }
+
+                                    // Hidden TextInput for keyboard entry
                                     TextInput {
-                                        id: deadlineMonthInput
+                                        id: monthKeyInput
+                                        width: 0; height: 0; opacity: 0
+                                        maximumLength: 2
+                                        inputMethodHints: Qt.ImhDigitsOnly
+                                        validator: IntValidator { bottom: 1; top: 12 }
+                                        onTextChanged: {
+                                            if (text.length > 0) {
+                                                let val = parseInt(text);
+                                                if (val >= 1 && val <= 12) {
+                                                    cardItem.selectedMonth = val;
+                                                }
+                                                if (text.length === 2) {
+                                                    text = "";
+                                                    deadlineDayInput.forceActiveFocus();
+                                                }
+                                            }
+                                        }
+                                        Keys.onTabPressed: { text = ""; deadlineDayInput.forceActiveFocus(); }
+                                        onAccepted: { text = ""; cardItem.commitEdit(); }
+                                    }
+
+                                    PlasmaComponents.Label {
                                         anchors.fill: parent
                                         horizontalAlignment: Text.AlignHCenter
                                         verticalAlignment: Text.AlignVCenter
                                         font.pixelSize: Kirigami.Units.gridUnit * 0.65
-                                        color: Kirigami.Theme.textColor
-                                        selectionColor: Kirigami.Theme.highlightColor
-                                        selectedTextColor: Kirigami.Theme.highlightedTextColor
-                                        maximumLength: 2
-                                        inputMethodHints: Qt.ImhDigitsOnly
-                                        validator: IntValidator { bottom: 1; top: 12 }
-                                        text: {
-                                            if (cardItem.localDeadline) {
-                                                let parts = cardItem.localDeadline.split(" ")[0].split("/");
-                                                return parts[0] || "";
+                                        text: cardItem.selectedMonth > 0 ? monthDropdownField.monthNames[cardItem.selectedMonth - 1] : ""
+                                        opacity: cardItem.selectedMonth > 0 ? 1.0 : 0.4
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            if (monthDropdownPopup.visible) {
+                                                monthDropdownPopup.close();
+                                            } else {
+                                                monthDropdownPopup.open();
                                             }
-                                            return "";
                                         }
-                                        onAccepted: cardItem.commitEdit()
-                                        Keys.onTabPressed: deadlineDayInput.forceActiveFocus()
+                                    }
+
+                                    QQC2.Popup {
+                                        id: monthDropdownPopup
+                                        y: parent.height + 4
+                                        x: -Kirigami.Units.smallSpacing
+                                        width: Kirigami.Units.gridUnit * 5
+                                        padding: Kirigami.Units.smallSpacing
+                                        closePolicy: QQC2.Popup.CloseOnEscape | QQC2.Popup.CloseOnPressOutsideParent
+
+                                        background: Rectangle {
+                                            color: Qt.rgba(Kirigami.Theme.backgroundColor.r, Kirigami.Theme.backgroundColor.g, Kirigami.Theme.backgroundColor.b, 1.0)
+                                            border.width: 1
+                                            border.color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.15)
+                                            radius: Kirigami.Units.smallSpacing * 1.5
+                                        }
+
+                                        contentItem: Column {
+                                            spacing: 1
+                                            Repeater {
+                                                model: 12
+                                                delegate: Rectangle {
+                                                    width: parent.width
+                                                    height: Kirigami.Units.gridUnit * 1.1
+                                                    radius: Kirigami.Units.smallSpacing
+                                                    color: monthItemArea.containsMouse ? Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.2)
+                                                         : (cardItem.selectedMonth === index + 1 ? Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.1) : "transparent")
+                                                    Behavior on color { ColorAnimation { duration: 100 } }
+
+                                                    PlasmaComponents.Label {
+                                                        anchors.fill: parent
+                                                        anchors.leftMargin: Kirigami.Units.smallSpacing * 1.5
+                                                        verticalAlignment: Text.AlignVCenter
+                                                        text: monthDropdownField.monthNames[index]
+                                                        font.pixelSize: Kirigami.Units.gridUnit * 0.65
+                                                        font.weight: cardItem.selectedMonth === index + 1 ? Font.DemiBold : Font.Normal
+                                                        opacity: 0.85
+                                                    }
+
+                                                    MouseArea {
+                                                        id: monthItemArea
+                                                        anchors.fill: parent
+                                                        hoverEnabled: true
+                                                        cursorShape: Qt.PointingHandCursor
+                                                        onClicked: {
+                                                            cardItem.selectedMonth = index + 1;
+                                                            monthDropdownPopup.close();
+                                                            deadlineDayInput.forceActiveFocus();
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
 
@@ -1321,7 +1458,7 @@ PlasmoidItem {
                                         text: {
                                             if (cardItem.localDeadline) {
                                                 let parts = cardItem.localDeadline.split(" ")[0].split("/");
-                                                return parts[1] || "";
+                                                return parts[1] // "";
                                             }
                                             return "";
                                         }
@@ -1431,7 +1568,7 @@ PlasmoidItem {
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: {
                                             mainRoot.setTaskProperty(rootIndex, subIndex, "deadline", "");
-                                            deadlineMonthInput.text = "";
+                                            cardItem.selectedMonth = 0;
                                             deadlineDayInput.text = "";
                                             deadlineHourInput.text = "";
                                             deadlineMinuteInput.text = "";
