@@ -1152,7 +1152,7 @@ PlasmoidItem {
                                         spacing: Kirigami.Units.smallSpacing / 2
 
                                         Rectangle {
-                                            width: pillRow.implicitWidth + Kirigami.Units.smallSpacing * 3
+                                            width: deadlineBadgeLabel.implicitWidth + Kirigami.Units.smallSpacing * 3
                                             height: Kirigami.Units.gridUnit * 0.85
                                             radius: height / 2
                                             color: {
@@ -1160,22 +1160,16 @@ PlasmoidItem {
                                                 return Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.15);
                                             }
 
-                                            QtObject {
-                                                id: deadlineData
-                                                property string dateStr: ""
-                                                property string timeStr: ""
-                                                property string rawStr: cardItem.localDeadline
-
-                                                onRawStrChanged: update()
-                                                Component.onCompleted: update()
-
-                                                function update() {
-                                                    if (!rawStr) { dateStr = ""; timeStr = ""; return; }
-                                                    let parts = rawStr.split(" ");
+                                            PlasmaComponents.Label {
+                                                id: deadlineBadgeLabel
+                                                anchors.centerIn: parent
+                                                text: {
+                                                    if (!cardItem.localDeadline) return "";
+                                                    let parts = cardItem.localDeadline.split(" ");
                                                     let datePart = parts[0] || "";
                                                     let timePart = parts[1] || "";
                                                     let dateParts = datePart.split("/");
-                                                    if (dateParts.length < 2) { dateStr = rawStr; timeStr = ""; return; }
+                                                    if (dateParts.length < 2) return cardItem.localDeadline;
 
                                                     let monthNum = parseInt(dateParts[0]);
                                                     let dayNum = parseInt(dateParts[1]);
@@ -1184,54 +1178,39 @@ PlasmoidItem {
 
                                                     let now = new Date();
                                                     let deadlineDate = new Date(now.getFullYear(), monthNum - 1, dayNum);
-                                                    
+                                                    if (timePart) {
+                                                        let tp = timePart.split(":");
+                                                        deadlineDate.setHours(parseInt(tp[0]) || 0, parseInt(tp[1]) || 0, 0, 0);
+                                                    }
+
+                                                    // Build the time display part
+                                                    let timeDisplay = "";
                                                     if (timePart && timePart !== "00:00") {
                                                         let tHour = parseInt(timePart.split(":")[0]) || 0;
                                                         let tMin = (parseInt(timePart.split(":")[1]) || 0).toString().padStart(2, '0');
-                                                        timeStr = tHour + ":" + tMin;
-                                                    } else {
-                                                        timeStr = "";
+                                                        timeDisplay = " | " + tHour + ":" + tMin;
                                                     }
 
+                                                    // Compare dates (day-level)
                                                     let todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
                                                     let deadlineDayStart = new Date(deadlineDate.getFullYear(), deadlineDate.getMonth(), deadlineDate.getDate());
                                                     let dayDiff = Math.round((deadlineDayStart.getTime() - todayStart.getTime()) / 86400000);
 
-                                                    if (dayDiff === 0) { dateStr = "Today"; return; }
-                                                    if (dayDiff === 1) { dateStr = "Tomorrow"; return; }
-                                                    if (dayDiff > 1 && dayDiff <= 7) { dateStr = dayNames[deadlineDate.getDay()]; return; }
+                                                    if (dayDiff === 0) return "Today" + timeDisplay;
+                                                    if (dayDiff === 1) return "Tomorrow" + timeDisplay;
+                                                    if (dayDiff > 1 && dayDiff <= 7) return dayNames[deadlineDate.getDay()] + timeDisplay;
 
-                                                    dateStr = (monthNames[monthNum] || datePart) + " " + dayNum;
+                                                    // Further out or past: Mon DD / HH:MM
+                                                    let dateLabel = (monthNames[monthNum] || datePart) + " " + dayNum;
+                                                    if (timePart && timePart !== "00:00") {
+                                                        let tHour2 = parseInt(timePart.split(":")[0]) || 0;
+                                                        let tMin2 = (parseInt(timePart.split(":")[1]) || 0).toString().padStart(2, '0');
+                                                        return dateLabel + " / " + tHour2 + ":" + tMin2;
+                                                    }
+                                                    return dateLabel;
                                                 }
-                                            }
-
-                                            RowLayout {
-                                                id: pillRow
-                                                anchors.centerIn: parent
-                                                spacing: Kirigami.Units.smallSpacing * 0.8
-
-                                                PlasmaComponents.Label {
-                                                    text: deadlineData.dateStr
-                                                    font.pixelSize: Kirigami.Units.gridUnit * 0.55
-                                                    opacity: 0.65
-                                                    visible: text !== ""
-                                                }
-
-                                                Rectangle {
-                                                    width: 1
-                                                    height: Kirigami.Units.gridUnit * 0.45
-                                                    color: Kirigami.Theme.textColor
-                                                    opacity: 0.3
-                                                    visible: deadlineData.dateStr !== "" && deadlineData.timeStr !== ""
-                                                    Layout.alignment: Qt.AlignVCenter
-                                                }
-
-                                                PlasmaComponents.Label {
-                                                    text: deadlineData.timeStr
-                                                    font.pixelSize: Kirigami.Units.gridUnit * 0.55
-                                                    opacity: 0.65
-                                                    visible: text !== ""
-                                                }
+                                                font.pixelSize: Kirigami.Units.gridUnit * 0.55
+                                                opacity: 0.65
                                             }
                                             
                                             MouseArea {
@@ -1458,7 +1437,7 @@ PlasmoidItem {
                                         text: {
                                             if (cardItem.localDeadline) {
                                                 let parts = cardItem.localDeadline.split(" ")[0].split("/");
-                                                return parts[1] // "";
+                                                return parts[1] || "";
                                             }
                                             return "";
                                         }
