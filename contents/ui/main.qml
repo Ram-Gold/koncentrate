@@ -559,12 +559,15 @@ PlasmoidItem {
                 }
             }
 
-            // Circular Timer Controls: (+1)(return)(pause/play)(next phase)(-1)
+            // Timer Controls: (+1)(return)(pause/play)(next phase)(-1)
             RowLayout {
                 Layout.alignment: Qt.AlignHCenter
+                Layout.fillWidth: root.timerStyle === 1
+                Layout.leftMargin: root.timerStyle === 1 ? Kirigami.Units.smallSpacing : 0
+                Layout.rightMargin: root.timerStyle === 1 ? Kirigami.Units.smallSpacing : 0
                 spacing: Kirigami.Units.smallSpacing
 
-                // Template for circular buttons
+                // Template for buttons
                 component RoundControl : Rectangle {
                     id: controlBtn
                     property string iconName: ""
@@ -574,7 +577,8 @@ PlasmoidItem {
                     
                     implicitWidth: Kirigami.Units.gridUnit * 2.2
                     implicitHeight: Kirigami.Units.gridUnit * 2.2
-                    radius: width / 2
+                    Layout.fillWidth: root.timerStyle === 1
+                    radius: root.timerStyle === 1 ? 12 : width / 2
                     color: mouseArea.containsPress ? Kirigami.Theme.highlightColor : (mouseArea.containsMouse ? Kirigami.Theme.hoverColor : "transparent")
                     border.width: 1
                     border.color: Kirigami.Theme.highlightColor
@@ -631,8 +635,9 @@ PlasmoidItem {
                 // Play/Pause (Larger and Highlighted)
                 Rectangle {
                     implicitWidth: Kirigami.Units.gridUnit * 2.8
-                    implicitHeight: implicitWidth
-                    radius: width / 2
+                    implicitHeight: root.timerStyle === 1 ? Kirigami.Units.gridUnit * 2.2 : implicitWidth
+                    Layout.fillWidth: root.timerStyle === 1
+                    radius: root.timerStyle === 1 ? 12 : width / 2
                     color: root.phaseColor
                     
                     Kirigami.Icon {
