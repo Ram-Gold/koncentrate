@@ -25,5 +25,8 @@
     <entry name="tasks" type="String">
       <default>[]</default>
     </entry>
+    <entry name="timerStyle" type="Int">
+      <default>0</default>
+    </entry>
   </group>
 </kcfg>

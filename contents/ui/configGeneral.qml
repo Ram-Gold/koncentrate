@@ -15,9 +15,22 @@ KCM.SimpleKCM {
     property int cfg_numberOfSessions: Plasmoid.configuration.numberOfSessions
     property bool cfg_playChime: Plasmoid.configuration.playChime
     property string cfg_chimePath: Plasmoid.configuration.chimePath
+    property int cfg_timerStyle: Plasmoid.configuration.timerStyle
 
     Kirigami.FormLayout {
-        // --- Timer Durations ---
+        // --- Appearance ---
+        QQC2.ComboBox {
+            Kirigami.FormData.label: i18n("Timer Style:")
+            model: [i18n("Circle"), i18n("Progress Bar")]
+            currentIndex: cfg_timerStyle
+            onActivated: cfg_timerStyle = currentIndex
+        }
+
+        Kirigami.Separator {
+            Kirigami.FormData.isSection: true
+            Kirigami.FormData.label: i18n("Timer Durations")
+        }
+
         QQC2.SpinBox {
             Kirigami.FormData.label: i18n("Focus Duration (min):")
             from: 1

@@ -21,6 +21,7 @@ PlasmoidItem {
     readonly property int shortBreakTime: plasmoid.configuration.shortBreakTime * 60
     readonly property int longBreakTime: plasmoid.configuration.longBreakTime * 60
     readonly property int numberOfSessions: plasmoid.configuration.numberOfSessions
+    readonly property int timerStyle: plasmoid.configuration.timerStyle // 0: Circle, 1: Progress Bar
     
     property int timerState: 0 // 0: Stopped/Paused, 1: Running
     property int stateVal: 1 // 1: Focus, 2: Short Break, etc.
@@ -394,7 +395,10 @@ PlasmoidItem {
             }
 
             // --- TIMER SECTION ---
+
+            // === CIRCLE STYLE (timerStyle === 0) ===
             Item {
+                visible: root.timerStyle === 0
                 Layout.alignment: Qt.AlignHCenter
                 Layout.topMargin: Kirigami.Units.gridUnit * 1.5
                 Layout.preferredWidth: Kirigami.Units.gridUnit * 12
@@ -476,6 +480,80 @@ PlasmoidItem {
                                 opacity: (index < Math.ceil(stateVal / 2)) ? 1.0 : (index === Math.ceil(stateVal / 2) ? 0.6 : 0.25)
                                 Behavior on opacity { NumberAnimation { duration: 400 } }
                             }
+                        }
+                    }
+                }
+            }
+
+            // === PROGRESS BAR STYLE (timerStyle === 1) ===
+            ColumnLayout {
+                visible: root.timerStyle === 1
+                Layout.fillWidth: true
+                Layout.topMargin: Kirigami.Units.gridUnit * 1.5
+                Layout.bottomMargin: Kirigami.Units.gridUnit * 0.5
+                spacing: Kirigami.Units.largeSpacing
+
+                // Phase label + Timer text row
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Kirigami.Units.smallSpacing
+
+                    PlasmaComponents.Label {
+                        text: isBreak() ? (stateVal === numberOfSessions * 2 ? i18n("Resting") : i18n("Break")) : i18n("Focusing")
+                        font.pixelSize: Kirigami.Units.gridUnit * 0.8
+                        font.weight: Font.Bold
+                        opacity: 0.8
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    PlasmaComponents.Label {
+                        text: formatTime(counterSeconds)
+                        font.pixelSize: Kirigami.Units.gridUnit * 0.8
+                        font.weight: Font.DemiBold
+                        opacity: 0.9
+                    }
+                }
+
+                // Progress bar track
+                Item {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Kirigami.Units.gridUnit * 0.5
+
+                    // Track background
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: height / 2
+                        color: Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.1)
+                    }
+
+                    // Elapsed fill (grows left to right)
+                    Rectangle {
+                        anchors.left: parent.left
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        width: root.initialSeconds > 0 ? parent.width * (1 - root.counterSeconds / root.initialSeconds) : 0
+                        radius: height / 2
+                        color: root.phaseColor
+                        Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutQuad } }
+                    }
+                }
+
+                // Session dots
+                RowLayout {
+                    Layout.alignment: Qt.AlignHCenter
+                    spacing: 4
+                    visible: numberOfSessions > 1
+
+                    Repeater {
+                        model: numberOfSessions
+                        Rectangle {
+                            implicitWidth: 6
+                            implicitHeight: 6
+                            radius: 3
+                            color: Kirigami.Theme.highlightColor
+                            opacity: (index < Math.ceil(stateVal / 2)) ? 1.0 : (index === Math.ceil(stateVal / 2) ? 0.6 : 0.25)
+                            Behavior on opacity { NumberAnimation { duration: 400 } }
                         }
                     }
                 }
