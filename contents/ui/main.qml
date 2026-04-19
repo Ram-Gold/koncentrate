@@ -1146,7 +1146,7 @@ PlasmoidItem {
                                         spacing: Kirigami.Units.smallSpacing / 2
 
                                         Rectangle {
-                                            width: deadlineBadgeLabel.width + Kirigami.Units.smallSpacing * 3
+                                            width: deadlineBadgeLabel.implicitWidth + Kirigami.Units.smallSpacing * 3
                                             height: Kirigami.Units.gridUnit * 0.85
                                             radius: height / 2
                                             color: {
