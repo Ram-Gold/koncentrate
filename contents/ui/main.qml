@@ -500,7 +500,7 @@ PlasmoidItem {
 
                     PlasmaComponents.Label {
                         text: isBreak() ? (stateVal === numberOfSessions * 2 ? i18n("Resting") : i18n("Break")) : i18n("Focusing")
-                        font.pixelSize: Kirigami.Units.gridUnit * 0.8
+                        font.pixelSize: Kirigami.Units.gridUnit * 0.9
                         font.weight: Font.Bold
                         opacity: 0.8
                     }
@@ -509,7 +509,7 @@ PlasmoidItem {
 
                     PlasmaComponents.Label {
                         text: formatTime(counterSeconds)
-                        font.pixelSize: Kirigami.Units.gridUnit * 0.8
+                        font.pixelSize: Kirigami.Units.gridUnit * 0.9
                         font.weight: Font.DemiBold
                         opacity: 0.9
                     }
@@ -894,18 +894,28 @@ PlasmoidItem {
                                 let d = deadlineDayInput.text.trim();
                                 let h = deadlineHourInput.text.trim();
                                 let min = deadlineMinuteInput.text.trim();
+                                
                                 if (m > 0 && d !== "") {
                                     let mVal = Math.max(1, Math.min(12, m));
                                     let dVal = parseInt(d) || 0;
                                     let hVal = parseInt(h) || 0;
                                     let minVal = parseInt(min) || 0;
-                                    dVal = Math.max(1, Math.min(31, dVal));
+                                    
+                                    let now = new Date();
+                                    let y = now.getFullYear();
+                                    if (mVal < now.getMonth() + 1) {
+                                        y++;
+                                    }
+                                    
+                                    let maxDays = new Date(y, mVal, 0).getDate();
+                                    dVal = Math.max(1, Math.min(maxDays, dVal));
                                     hVal = Math.max(0, Math.min(23, hVal));
                                     minVal = Math.max(0, Math.min(59, minVal));
+                                    
                                     let deadlineStr = mVal.toString().padStart(2, '0') + "/" + dVal.toString().padStart(2, '0') + " " + hVal.toString().padStart(2, '0') + ":" + minVal.toString().padStart(2, '0');
                                     mainRoot.setTaskProperty(rootIndex, subIndex, "deadline", deadlineStr);
-                                } else if (m === 0 && d === "") {
-                                    // Clear deadline if both month and day are empty
+                                } else {
+                                    // Clear deadline if incomplete or empty
                                     mainRoot.setTaskProperty(rootIndex, subIndex, "deadline", "");
                                 }
                             }
@@ -1177,7 +1187,11 @@ PlasmoidItem {
                                                     let dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
                                                     let now = new Date();
-                                                    let deadlineDate = new Date(now.getFullYear(), monthNum - 1, dayNum);
+                                                    let y = now.getFullYear();
+                                                    if (monthNum < now.getMonth() + 1) {
+                                                        y++;
+                                                    }
+                                                    let deadlineDate = new Date(y, monthNum - 1, dayNum);
                                                     if (timePart) {
                                                         let tp = timePart.split(":");
                                                         deadlineDate.setHours(parseInt(tp[0]) || 0, parseInt(tp[1]) || 0, 0, 0);
@@ -1188,7 +1202,7 @@ PlasmoidItem {
                                                     if (timePart && timePart !== "00:00") {
                                                         let tHour = parseInt(timePart.split(":")[0]) || 0;
                                                         let tMin = (parseInt(timePart.split(":")[1]) || 0).toString().padStart(2, '0');
-                                                        timeDisplay = " | " + tHour + ":" + tMin;
+                                                        timeDisplay = " 〡 " + tHour + ":" + tMin;
                                                     }
 
                                                     // Compare dates (day-level)
@@ -1205,7 +1219,7 @@ PlasmoidItem {
                                                     if (timePart && timePart !== "00:00") {
                                                         let tHour2 = parseInt(timePart.split(":")[0]) || 0;
                                                         let tMin2 = (parseInt(timePart.split(":")[1]) || 0).toString().padStart(2, '0');
-                                                        return dateLabel + " / " + tHour2 + ":" + tMin2;
+                                                        return dateLabel + " 〡 " + tHour2 + ":" + tMin2;
                                                     }
                                                     return dateLabel;
                                                 }
@@ -1402,7 +1416,7 @@ PlasmoidItem {
                                 }
 
                                 PlasmaComponents.Label {
-                                    text: "/"
+                                    text: "〡"
                                     font.pixelSize: Kirigami.Units.gridUnit * 0.7
                                     opacity: 0.35
                                 }
