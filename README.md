@@ -1,5 +1,6 @@
 ![Banner](./screenshots/Koncentrate_banner.png)
 # 🍅 Koncentrate
+![QML](https://img.shields.io/badge/language-QML-brightgreen) ![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg) ![KDE Plasma 6](https://img.shields.io/badge/KDE%20Plasma-6-0066CC)
 
 A **KDE Plasma 6 widget** that combines a Pomodoro timer with a built-in To-Do List - so you can manage your tasks and stay focused, all from your desktop.
 
